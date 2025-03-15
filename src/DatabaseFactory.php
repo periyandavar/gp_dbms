@@ -39,7 +39,7 @@ class DatabaseFactory
         }
         try {
             $driver = explode("/", $config['driver']);
-            $driverclass = "Database\\" . $driver[0] . 'Driver';
+            $driverclass = "Database\\Driver\\" . ucfirst($driver[0]) . 'Driver';
             if (!class_exists($driverclass)) {
                 throw new Exception("Invalid Driver");
             }
@@ -53,7 +53,6 @@ class DatabaseFactory
             );
             return self::$_db;
         } catch (Exception $exception) {
-            //
         }
 
         return null;

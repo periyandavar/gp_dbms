@@ -12,6 +12,7 @@
 
 namespace Database\Driver;
 
+use Database\Database;
 use Pdo;
 use PdoException;
 use Error;
