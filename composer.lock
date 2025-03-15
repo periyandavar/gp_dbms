@@ -1,0 +1,56 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "fe08b13668a5232b0c5fc79f63a344c0",
+    "packages": [
+        {
+            "name": "gp/loader",
+            "version": "v1.0.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/periyandavar/gp_loader.git",
+                "reference": "f7301691c677a2cfcfa072f40961ad95d61ca10e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/periyandavar/gp_loader/zipball/f7301691c677a2cfcfa072f40961ad95d61ca10e",
+                "reference": "f7301691c677a2cfcfa072f40961ad95d61ca10e",
+                "shasum": ""
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Loader\\": "."
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "periyandavar-ganesh",
+                    "email": "vickyperiyandavar@gmail.com"
+                }
+            ],
+            "description": "A Loader library to autoload the classes and a container to support the dependency injections",
+            "support": {
+                "issues": "https://github.com/periyandavar/gp_loader/issues",
+                "source": "https://github.com/periyandavar/gp_loader/tree/v1.0.2"
+            },
+            "time": "2025-03-15T06:31:55+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": [],
+    "platform-dev": [],
+    "plugin-api-version": "2.0.0"
+}
