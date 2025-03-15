@@ -13,6 +13,7 @@
 
 namespace Database\Driver;
 
+use Database\Database;
 use mysqli;
 use Mysqli_sql_exception;
 use Error;

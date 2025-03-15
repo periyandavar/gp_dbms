@@ -9,6 +9,7 @@
  * @license  http://license.com license
  * @link     http://url.com
  */
+namespace Database;
 
 use Exception;
 
