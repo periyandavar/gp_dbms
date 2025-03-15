@@ -1,0 +1,18 @@
+{
+    "name": "gp/dbms",
+    "description": "Simple PHP Database tool with QueryParam class supports mysqli and pdo",
+    "type": "library",
+    "require": {
+        "gp/loader": "^1.0"
+    },
+    "license": "MIT",
+    "authors": [{
+        "name": "Periyandavar Ganesh",
+        "email": "vickyperiyandavar@gmail.com"
+    }],
+    "autoload": {
+        "psr-4": {
+            "Database\\": "src\\"
+        }
+    }
+}
