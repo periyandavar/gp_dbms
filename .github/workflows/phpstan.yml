@@ -1,0 +1,28 @@
+name: PHPStan
+
+on:
+  push:
+    branches:
+      - main  # Trigger on pushes to the main branch
+  pull_request:
+    branches:
+      - main  # Trigger on pull requests targeting the main branch
+  workflow_dispatch:  # Allow manual triggering of the workflow
+
+jobs:
+  phpstan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0' # or your required PHP version
+
+      - name: Install Composer dependencies
+        run: composer install
+
+      - name: Run PHPStan
+        run: ./vendor/bin/phpstan analyse

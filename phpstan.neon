@@ -1,0 +1,9 @@
+parameters:
+    level: 5  # Set the level of analysis (0 to 8, 5 is a good balance)
+    paths:
+        - %currentWorkingDirectory%/src  # Adjust this path to your source code directory
+    excludePaths:
+        - %currentWorkingDirectory%/vendor  # Exclude vendor directory from analysis
+
+includes:
+    - vendor/phpstan/phpstan/conf/bleedingEdge.neon  # Optional: include bleeding edge rules if needed

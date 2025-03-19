@@ -1,14 +1,5 @@
 <?php
-/**
- * Database
- * php version 7.3.5
- *
- * @category Database
- * @package  Database
- * @author   Periyandavar <periyandavar@gmail.com>
- * @license  http://license.com license
- * @link     http://url.com
- */
+
 namespace Database;
 
 use Exception;
@@ -18,11 +9,6 @@ use Exception;
  * Database class consists of basic level functions for various purposes and
  * query building functionality
  *
- * @category Database
- * @package  Database
- * @author   Periyandavar <periyandavar@gmail.com>
- * @license  http://license.com license
- * @link     http://url.com
  */
 abstract class Database
 {
@@ -42,13 +28,15 @@ abstract class Database
         $this->dbQuery = new DBQuery();
     }
 
-    public function __call($method, $arguments) {
+    public function __call($method, $arguments)
+    {
         if (method_exists($this->dbQuery, $method)) {
             // Delegate the method call to the $b instance
             $result = call_user_func_array([$this->dbQuery, $method], $arguments);
             if ($result instanceof DBQuery) {
                 return $this;
             }
+
             return $result;
         } else {
             throw new Exception("Method $method not found");
@@ -90,18 +78,17 @@ abstract class Database
      * result set called directly from the object
      * It should return a single row result as object on success and null on failure
      *
-     * @return :object|bool|null
+     * @return object|bool|null
      */
-    abstract public function fetch(); //:object|bool|null;
+    abstract public function fetch(); //object|bool|null;
 
     /**
      * Disabling cloning the object from outside the class
-     * 
+     *
      * @return void
      */
     private function __clone()
     {
-
     }
 
     /**
@@ -137,7 +124,6 @@ abstract class Database
      */
     protected $query;
 
-
     /**
      * This will contains the values to be bind
      *
@@ -145,12 +131,11 @@ abstract class Database
      */
     protected $bindValues;
 
-
     /**
      * Query function to run directly raw query with or without bind values
      *
-     * @param string $query sql
-     * @param array  $bindValues  bind values
+     * @param string $query      sql
+     * @param array  $bindValues bind values
      *
      * @return bool
      */
@@ -161,6 +146,7 @@ abstract class Database
         $this->query = $query;
         $this->bindValues = $bindValues;
         $result = $this->runQuery($this->query, $this->bindValues);
+
         return $result;
     }
 
@@ -189,6 +175,7 @@ abstract class Database
             return false;
         }
         $this->dbQuery->reset();
+
         return $result;
     }
 
@@ -202,7 +189,8 @@ abstract class Database
      */
     public function set(string $name, string $value): bool
     {
-        $this->query = "SET " . $name . " = " . $value;
+        $this->query = 'SET ' . $name . ' = ' . $value;
+
         return $this->executeQuery();
     }
 
@@ -213,7 +201,8 @@ abstract class Database
      */
     public function begin(): bool
     {
-        $this->query = "START TRANSACTION";
+        $this->query = 'START TRANSACTION';
+
         return $this->executeQuery();
     }
 
@@ -224,7 +213,7 @@ abstract class Database
      */
     public function commit(): bool
     {
-        return $this->runQuery("COMMIT");
+        return $this->runQuery('COMMIT');
     }
 
     /**
@@ -234,7 +223,7 @@ abstract class Database
      */
     public function rollback(): bool
     {
-        return $this->runQuery("ROLLBACK");
+        return $this->runQuery('ROLLBACK');
     }
 
     abstract public function escape(string $value): string;
@@ -243,6 +232,7 @@ abstract class Database
     {
         $this->dbQuery->limit(1);
         $this->execute();
+
         return $this->fetch();
     }
 
@@ -253,12 +243,14 @@ abstract class Database
         while ($row = $this->fetch()) {
             $data[] = $row;
         }
+
         return $data;
     }
 
     public function setQuery($query)
     {
         $this->query = $query;
+
         return $this;
     }
 

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="vendor/autoload.php">
+    <coverage processUncoveredFiles="true">
+        <include>
+            <directory>./src</directory> <!-- Adjust the path to your source code -->
+        </include>
+        <exclude>
+            <directory>./vendor</directory> <!-- Exclude vendor directory -->
+            <directory>./tests</directory> <!-- Exclude tests directory -->
+        </exclude>
+        <report>
+            <clover outputFile="coverage.xml"/>
+        </report>
+    </coverage>
+    <testsuites>
+        <testsuite name="My Project Test Suite">
+            <directory>./tests</directory> <!-- Adjust this path to your tests directory -->
+        </testsuite>
+    </testsuites>
+    <php>
+        <ini name="error_reporting" value="-1"/>
+        <ini name="display_errors" value="1"/>
+    </php>
+</phpunit>  

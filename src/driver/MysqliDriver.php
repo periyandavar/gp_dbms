@@ -1,34 +1,12 @@
 <?php
-/**
- * MysqliDriver
- * php version 7.3.5
- *
- * @category   Database
- * @package    Database
- * @subpackage DatabaseDriver
- * @author     Periyandavar <periyandavar@gmail.com>
- * @license    http://license.com license
- * @link       http://url.com
- */
 
 namespace Database\Driver;
 
 use Database\Database;
+use Error;
 use mysqli;
 use Mysqli_sql_exception;
-use Error;
 
-defined('VALID_REQ') or exit('Invalid request');
-/**
- * MysqliDriver Class performs database operations with mysqli connection
- *
- * @category   Database
- * @package    Database
- * @subpackage DatabaseDriver
- * @author     Periyandavar <periyandavar@gmail.com>
- * @license    http://license.com license
- * @link       http://url.com
- */
 class MysqliDriver extends Database
 {
     /**
@@ -51,12 +29,11 @@ class MysqliDriver extends Database
 
     /**
      * Disabling cloning the object from outside the class
-     * 
+     *
      * @return void
      */
     private function __clone()
     {
-        
     }
 
     /**
@@ -77,7 +54,8 @@ class MysqliDriver extends Database
         string $db,
         string $driver
     ): MysqliDriver {
-        self::$instance = self::$instance ?? new static($host, $user, $pass, $db);
+        self::$instance = self::$instance ?? new self($host, $user, $pass, $db);
+
         return self::$instance;
     }
 
@@ -91,23 +69,23 @@ class MysqliDriver extends Database
         $flag = false;
         try {
             $stmt = $this->con->prepare($this->query);
-            $paramType = "";
-            if (is_array($this->bindValues)) {
-                foreach ($this->bindValues as $bindValue) {
-                    switch (gettype($bindValue)) {
+            $paramType = '';
+
+            foreach ($this->bindValues as $bindValue) {
+                switch (gettype($bindValue)) {
                     case 'integer':
-                        $paramType .= "i";
+                        $paramType .= 'i';
                         break;
                     case 'double':
-                        $paramType .= "d";
+                        $paramType .= 'd';
                         break;
                     default:
-                        $paramType .= "s";
+                        $paramType .= 's';
                         break;
-                    }
                 }
-                $stmt->bind_param($paramType, ...$this->bindValues);
             }
+            $stmt->bind_param($paramType, ...$this->bindValues);
+
             $flag = $stmt->execute();
             if ($flag) {
                 $result = $stmt->get_result();
@@ -130,6 +108,7 @@ class MysqliDriver extends Database
             //     ]
             // );
         }
+
         return $flag;
     }
 
@@ -151,23 +130,23 @@ class MysqliDriver extends Database
      *
      * @return bool
      */
-    public function runQuery(string $sql, array $bindValues=[]): bool
+    public function runQuery(string $sql, array $bindValues = []): bool
     {
         $flag = false;
         try {
             $stmt = $this->con->prepare($sql);
-            $paramType = "";
+            $paramType = '';
             foreach ($bindValues as $bindValue) {
                 switch (gettype($bindValue)) {
-                case 'integer':
-                    $paramType .= "i";
-                    break;
-                case 'double':
-                    $paramType .= "d";
-                    break;
-                default:
-                    $paramType .= "s";
-                    break;
+                    case 'integer':
+                        $paramType .= 'i';
+                        break;
+                    case 'double':
+                        $paramType .= 'd';
+                        break;
+                    default:
+                        $paramType .= 's';
+                        break;
                 }
             }
             if (count($bindValues) != 0) {
@@ -195,6 +174,7 @@ class MysqliDriver extends Database
             //     ]
             // );
         }
+
         return $flag;
     }
 
@@ -205,11 +185,6 @@ class MysqliDriver extends Database
      */
     public function close()
     {
-        if (is_resource($this->con)
-            && get_resource_type($this->con)==='mysql link'
-        ) {
-            $this->con->close();
-        }
         $this->con = null;
     }
 
@@ -222,7 +197,6 @@ class MysqliDriver extends Database
     {
         return $this->con->insert_id;
     }
-
 
     /**
      * Begin the transaction
