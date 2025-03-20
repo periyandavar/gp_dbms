@@ -1,6 +1,6 @@
 <?php
 
-namespace System\Orm;
+namespace Database\Orm;
 
 abstract class Events
 {

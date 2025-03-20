@@ -4,8 +4,15 @@ namespace Database\Orm;
 
 use Database\DatabaseFactory;
 use Database\DBQuery;
+use Database\Orm\Relation\HasMany;
+use Database\Orm\Relation\HasOne;
+use Database\Orm\Relation\Relation;
+use DatabaseException;
 use Loader\Container;
 
+/**
+ * 
+ */
 abstract class Model
 {
     /**
@@ -17,7 +24,9 @@ abstract class Model
     protected static $db;
     protected $attr = [];
 
-    protected DBQuery $query;
+    protected DBQuery $dbQuery;
+
+    private $with_models = [];
 
     /**
      * Events array
@@ -39,6 +48,8 @@ abstract class Model
      * @var bool
      */
     private $is_loaded_by_orm = false;
+
+    private $relations = [];
 
     /**
      * Set/unset the trigger event flag.
@@ -113,9 +124,9 @@ abstract class Model
      * Update the model.
      *
      * @param array $_data
-     * @param array $_where
+     * @param string $_where
      */
-    public function update($_data, $_where)
+    private function update($_data, $_where)
     {
         $db = static::getDb();
         $db->reset();
@@ -159,13 +170,12 @@ abstract class Model
     /**
      * Get the database instance, for the model.
      *
-     * @return \System\Database\Database
+     * @return \Database\Database
      */
     protected static function getDb()
     {
         if (! static::$db) {
-            global $dbConfig;
-            self::$db = DatabaseFactory::create($dbConfig);
+            self::$db = DatabaseFactory::get();
         }
 
         return static::$db;
@@ -205,7 +215,7 @@ abstract class Model
      *
      * @param mixed $_identifier
      *
-     * @return static|null
+     * @return Model|null
      */
     public static function find($_identifier)
     {
@@ -224,18 +234,102 @@ abstract class Model
             return null;
         }
 
-        $model = static::loadFromDbRow($result);
+        $model = self::getModel($result);
+        
         $model->setIsLoadedByOrm(true);
 
         return $model;
     }
+
+    private static function getModel($result)
+    {
+        $result = (array)$result;
+        $model = static::loadFromDbRow($result);
+
+        return $model;
+    }
+
+    /**
+     * Handle with
+     *
+     * @param Model[] $models
+     * @param Model $ref
+     *
+     * @return array
+     */
+    private static function loadWith(array $models, Model $ref)
+    {
+        $updatedModels = $models;
+        
+
+        if (empty($models)) {
+            return $updatedModels;
+        }
+
+        $withModels = $ref->getWithModels();
+        $relations = $ref->getRelations();
+
+        if (empty($withModels) || empty($relations)) {
+            return $updatedModels;
+        }
+
+            foreach ($withModels as $with) {
+                $relation = $relations[$with];
+                if (isset($relation)) {
+                    self::handleRelation($relation, $updatedModels, $with);
+                }
+            }
+
+            return $updatedModels;
+    }
+
+    /**
+     * Handle relations
+     *
+     * @param \Database\Orm\Relation\Relation $relation
+     * @param Model[] $models
+     * 
+     * @return array
+     */
+    private static function handleRelation(Relation $relation, $models, string $with)
+    { 
+        $updatedModels = [];
+        $fk = $relation->getForeignKey();
+        $fkValues = array_map(function ($model) use ($fk) {
+            return $model->$fk;
+        }, $updatedModels);
+
+        $fkValues = implode(',', $fkValues);
+        $relationClass = $relation->getRelatedModel();
+        $primaryKey = $relation->getPrimaryKey();
+
+        $dbQuery = (new DBQuery())->selectAll()->from($relationClass::getTableName())->where(" {$primaryKey} IN ($fkValues) ");
+        $result = false;
+        if ($relation instanceof HasOne) {
+            $result = (new $relationClass())->setDbQuery($dbQuery)->one();
+        }
+
+        if ($relation instanceof HasMany) {
+            $result = (new $relationClass())->setDbQuery($dbQuery)->all();
+        }
+
+        if (! $result) {
+            return $updatedModels;
+        }
+
+        return array_map(function ($model) use ($result, $with) {
+            $model->$with = $result;
+        }, $updatedModels );
+    }
+
+    
 
     /**
      * Load the model from the database row.
      *
      * @param array $_db_row
      *
-     * @return static
+     * @return Model
      */
     public static function loadFromDbRow($_db_row)
     {
@@ -257,7 +351,7 @@ abstract class Model
      *
      * @param array $_data
      *
-     * @return static
+     * @return Model
      */
     public static function fromDbRow($_data)
     {
@@ -315,12 +409,84 @@ abstract class Model
         return $result;
     }
 
+    public static function select(?DBQuery $query = null)
+    {
+        $calledClass = get_called_class();
+        $dbQuery = $query ?? (new DBQuery());
+        $dbQuery->selectAll(false)->from(self::getTableName());
+        
+        $model = new $calledClass();
+        $model->setDbQuery($dbQuery);
+
+        return $model;
+    }
+    public function one()
+    {
+        $db = static::getDb();
+        $result = $db->setDbQuery($this->dbQuery)->getOne();
+        if (! $result) {
+            return null;
+        }
+        $model = self::getModel($result);
+        $model->setIsLoadedByOrm(true);
+
+        return $model;
+    }
+
+    public function all()
+    {
+        $db = static::getDb();
+        $result = $db->setDbQuery($this->dbQuery)->getAll();
+        if (! $result) {
+            return [];
+        }
+        
+        $models = [];
+        foreach ($result as $row) {
+            $row = (array) $row;
+            $model = static::loadFromDbRow($row);
+            $model->setIsLoadedByOrm(true);
+            $models[] = $model;
+        }
+
+        self::loadWith($models, $this);
+
+        return $models;
+    }
+
+    public static function updateAll(array $fields, $where = null, $join = null)
+    {
+        $db = static::getDb();
+        $dbQuery = new DBQuery();
+        $dbQuery->update(static::getTableName(), $fields, $where, $join);
+        $result = $db->setDbQuery($dbQuery)->execute();
+
+        return $result;
+    }
+
+    public static function deleteAll($where = null)
+    {
+        $db = static::getDb();
+        $dbQuery = new DBQuery();
+        $dbQuery->delete(static::getTableName(), $where);
+        $result = $db->setDbQuery($dbQuery)->execute();
+
+        return $result;
+    }
+
+    public function setDbQuery(DBQuery $query)
+    {
+        $this->dbQuery = $query;
+
+        return $this;
+    }
+
     /**
      * Find all records.
      *
      * @param mixed $_query
      *
-     * @return static[]
+     * @return Model[]
      */
     public static function findAll($_query = null)
     {
@@ -337,9 +503,9 @@ abstract class Model
             return [];
         }
 
-        // if (is_object($result)) {
-        // $result = (array) $result;
-        // }
+        if (is_object($result)) {
+            $result = (array) $result;
+        }
 
         $models = [];
         foreach ($result as $row) {
@@ -440,13 +606,102 @@ abstract class Model
 
     public function __get($name)
     {
-        // var_export(['get' => $name]);
+        if (property_exists($this, $name) && isset($this->relations[$name])) {
+            $relation = $this->relations[$name];
+            $this->$name = $relation->handle();
+
+        }
         return $this->attr[$name] ?? null;
+    }
+
+    public function getRelation($name)
+    {
+        return $this->relations[$name] ?? null;
+    }
+
+    public function isRelation($name)
+    {
+        return $this->getRelation($name) != null;
     }
 
     public function __set($name, $value)
     {
-        // var_export(['set' =>[ $name, $value]]);
         $this->attr[$name] = $value;
+    }
+
+    public function __call($method, $arguments)
+    {
+        $db = static::getDb();
+        if (method_exists($db, $method)) {
+            // Delegate the method call to the $b instance
+            $result = call_user_func_array([$db, $method], $arguments);
+            if ($result instanceof DBQuery) {
+                return $this;
+            }
+
+            return $result;
+        } else {
+            throw new DatabaseException("Method $method not found", DatabaseException::UNKNOWN_METHOD_CALL_ERROR, null, ['method' => $method, 'class' => self::class]);
+        }
+    }
+
+    public function hasOne(string $relatedModelClass, string $foreignKey, string $primaryKey, DBQuery $query)
+    {
+        $backtrace = debug_backtrace();
+        $name = $backtrace[1]['function'] ?? null;
+        if (! isset($name)) {
+            return null;
+        }
+
+        $hasOne = new HasOne($this, $relatedModelClass, $foreignKey, $foreignKey, $query);
+        $this->relations[$name] = $hasOne;
+
+        return $hasOne->handle();
+    }
+
+    public function hasMany(string $relatedModelClass, string $foreignKey, string $primaryKey, DBQuery $query)
+    {
+        $hasMany = new HasMany($this, $relatedModelClass, $foreignKey, $foreignKey, $query);
+        $backtrace = debug_backtrace();
+        $name = $backtrace[1]['function'] ?? null;
+        if (! isset($name)) {
+            return null;
+        }
+        $this->relations[$name] = $hasMany;
+
+        return $hasMany->handle();
+    }
+
+    /**
+     * Add eager loading objects
+     *
+     * @param string|array $with
+     *
+     * @return Model
+     */
+    public function with($with)
+    {
+        if (is_array($with)) {
+            $this->with_models = array_merge($this->with_models, $with);
+            return $this;
+        }
+        $this->with_models[] = $with;
+        return $this;
+    }
+
+    public function getWithModels()
+    {
+        return $this->with_models;
+    }
+
+    public function getRelations()
+    {
+        return $this->relations;
+    }
+
+    public function reload()
+    {
+        $primaryKey = $this->getUniqueId();
+        return self::find($this->$primaryKey);
     }
 }

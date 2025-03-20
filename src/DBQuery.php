@@ -119,16 +119,19 @@ class DBQuery
      * we can call this in any one of the following ways
      * delete('table', 'id = 1') or delete('table')->where('id = 1');
      *
-     * @param string      $table Table Name
-     * @param string|null $where Where condition
+     * @param string            $table Table Name
+     * @param array|string|null $where Where condition
      *
      * @return DBQuery
      */
-    public function delete(string $table, ?string $where = null): DBQuery
+    public function delete(string $table, mixed $where = null): DBQuery
     {
         $this->_resetQuery();
         $this->_sql = "DELETE FROM `$table`";
         if (isset($where)) {
+            if (is_array($where)) {
+                [$where, $this->bindValues] = $this->frameWhere($where);
+            }
             $this->_where = " WHERE $where";
         }
 
@@ -155,17 +158,17 @@ class DBQuery
      * update('table', ["name"=>"Raja"] ,'id = 1') or
      * update('table',  ["name"=>"Raja"] )->where('id = 1');
      *
-     * @param string      $table  Table Name
-     * @param array       $fields Fields
-     * @param string|null $where  Where condition
-     * @param string|null $join   Join condition
+     * @param string            $table  Table Name
+     * @param array             $fields Fields
+     * @param array|string|null $where  Where condition
+     * @param string|null       $join   Join condition
      *
      * @return DBQuery
      */
     public function update(
         string $table,
         array $fields = [],
-        ?string $where = null,
+        mixed $where = null,
         ?string $join = null
     ): DBQuery {
         $this->_resetQuery();
@@ -186,10 +189,26 @@ class DBQuery
         }
         $this->_sql = "UPDATE $table " . $join . ' SET ' . $set;
         if (isset($where)) {
+            if (is_array($where)) {
+                [$where, $bindValues] = $this->frameWhere($where);
+                $this->bindValues = array_merge($this->bindValues, $bindValues);
+            }
             $this->_where = " WHERE $where";
         }
 
         return $this;
+    }
+
+    public function frameWhere($data, $condition = 'AND')
+    {
+        $result = [];
+        $bindValues = [];
+        foreach ($data as $key => $value) {
+            $result[] = "$key = ?";
+            $bindValues[] = $value;
+        }
+
+        return [implode(" $condition ", $result), $bindValues];
     }
 
     /**
@@ -385,6 +404,14 @@ class DBQuery
             $arg = $args[0];
 
             if (is_array($arg)) {
+                $keys = array_keys($arg);
+                if (array_keys($keys) !== $keys) {
+                    [$this->_where, $bindValues] = $this->frameWhere($arg);
+                    $this->bindValues = array_merge($this->bindValues, $bindValues);
+
+                    return $this;
+                }
+
                 $index = 1;
 
                 foreach ($arg as $param) {

@@ -2,12 +2,44 @@
 
 namespace Database;
 
+use DatabaseException;
 use Exception;
 
 /**
  * Super class for all Database. All drivers should extend this Database
  * Database class consists of basic level functions for various purposes and
  * query building functionality
+ *
+ * DBQuery Methods
+ * @method Database delete(string $table, array|string|null $where)
+ * @method Database setTo($args)
+ * @method Database update(string $table, array $fields = [], array|string|null $where = null, ?string $join = null)
+ * @method Database insert(string $table, array $fields = [], array $funcfields = [])
+ * @method Database select($columns)
+ * @method Database selectAs($selectData)
+ * @method Database selectAll($reset)
+ * @method Database from(string $tableName)
+ * @method Database appendWhere(string $where)
+ * @method string   getWhere()
+ * @method Database where(...$args)
+ * @method Database orWhere($args)
+ * @method Database limit(int $limit, ?int $offset)
+ * @method Database orderBy(string $fieldName, string $order)
+ * @method string   getExectedQuery()
+ * @method string   getQuery()
+ * @method array    getBindValues()
+ * @method Database appendBindValues(array $values)
+ * @method Database innerJoin(string $tableName)
+ * @method Database leftJoin(string $tableName)
+ * @method Database rightJoin(string $tableName)
+ * @method Database crossJoin(string $tableName)
+ * @method Database on(string $condition)
+ * @method Database using(string $field)
+ * @method Database groupBy($fields)
+ * @method          setBindValue($values)
+ * @method          setQuery($query)
+ * @method          getSql()
+ * @method Database reset()
  *
  */
 abstract class Database
@@ -39,7 +71,7 @@ abstract class Database
 
             return $result;
         } else {
-            throw new Exception("Method $method not found");
+            throw new DatabaseException("Method $method not found", DatabaseException::UNKNOWN_METHOD_CALL_ERROR, null, ['method' => $method, 'class' => self::class]);
         }
     }
 
@@ -96,11 +128,11 @@ abstract class Database
      * instance of the class in
      * singleton approch
      *
-     * @param string $host   host name
-     * @param string $user   User name
-     * @param string $pass   Password
-     * @param string $db     database
-     * @param string $driver Driver
+     * @param string $host    host name
+     * @param string $user    User name
+     * @param string $pass    Password
+     * @param string $db      database
+     * @param array  $configs Other Configs
      *
      * @return Database
      */
@@ -109,7 +141,7 @@ abstract class Database
         string $user,
         string $pass,
         string $db,
-        string $driver
+        array $configs = []
     );
 
     /**
@@ -141,7 +173,6 @@ abstract class Database
      */
     public function query(string $query, array $bindValues = []): bool
     {
-        // $this->_resetQuery();
         $query = trim($query);
         $this->query = $query;
         $this->bindValues = $bindValues;
