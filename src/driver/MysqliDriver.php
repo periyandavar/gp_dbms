@@ -1,34 +1,13 @@
 <?php
-/**
- * MysqliDriver
- * php version 7.3.5
- *
- * @category   Database
- * @package    Database
- * @subpackage DatabaseDriver
- * @author     Periyandavar <periyandavar@gmail.com>
- * @license    http://license.com license
- * @link       http://url.com
- */
 
 namespace Database\Driver;
 
 use Database\Database;
+use DatabaseException;
+use Error;
 use mysqli;
 use Mysqli_sql_exception;
-use Error;
 
-defined('VALID_REQ') or exit('Invalid request');
-/**
- * MysqliDriver Class performs database operations with mysqli connection
- *
- * @category   Database
- * @package    Database
- * @subpackage DatabaseDriver
- * @author     Periyandavar <periyandavar@gmail.com>
- * @license    http://license.com license
- * @link       http://url.com
- */
 class MysqliDriver extends Database
 {
     /**
@@ -45,28 +24,27 @@ class MysqliDriver extends Database
             parent::__construct();
             $this->con = new mysqli($host, $user, $pass, $db);
         } catch (Mysqli_sql_exception $e) {
-            die();
+            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_CONNECTION_ERROR, $e);
         }
     }
 
     /**
      * Disabling cloning the object from outside the class
-     * 
+     *
      * @return void
      */
     private function __clone()
     {
-        
     }
 
     /**
      * Returns the same instance of the MysqliDriver to performs Singleton
      *
-     * @param string $host   Host
-     * @param string $user   UserName
-     * @param string $pass   Password
-     * @param string $db     DatabaseName
-     * @param string $driver DriverName
+     * @param string $host    Host
+     * @param string $user    UserName
+     * @param string $pass    Password
+     * @param string $db      DatabaseName
+     * @param array  $configs Other Configs
      *
      * @return MysqliDriver
      */
@@ -75,9 +53,10 @@ class MysqliDriver extends Database
         string $user,
         string $pass,
         string $db,
-        string $driver
+        array $configs = []
     ): MysqliDriver {
-        self::$instance = self::$instance ?? new static($host, $user, $pass, $db);
+        self::$instance = self::$instance ?? new self($host, $user, $pass, $db);
+
         return self::$instance;
     }
 
@@ -91,45 +70,40 @@ class MysqliDriver extends Database
         $flag = false;
         try {
             $stmt = $this->con->prepare($this->query);
-            $paramType = "";
-            if (is_array($this->bindValues)) {
-                foreach ($this->bindValues as $bindValue) {
-                    switch (gettype($bindValue)) {
+            $paramType = '';
+
+            foreach ($this->bindValues as $bindValue) {
+                switch (gettype($bindValue)) {
                     case 'integer':
-                        $paramType .= "i";
+                        $paramType .= 'i';
                         break;
                     case 'double':
-                        $paramType .= "d";
+                        $paramType .= 'd';
                         break;
                     default:
-                        $paramType .= "s";
+                        $paramType .= 's';
                         break;
-                    }
                 }
-                $stmt->bind_param($paramType, ...$this->bindValues);
             }
+            $stmt->bind_param($paramType, ...$this->bindValues);
+
             $flag = $stmt->execute();
             if ($flag) {
                 $result = $stmt->get_result();
                 $this->result = ($result == false) ? null : $this->result = $result;
             }
         } catch (Mysqli_sql_exception $e) {
-            // Log::getInstance()->error(
-            //     "Exception: ".$e->getMessage(),
-            //     [
-            //         "sql" => $this->query,
-            //         "bind values" => $this->bindValues
-            //     ]
-            // );
+            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
+                'sql' => $this->query,
+                'bind values' => $this->bindValues
+            ]);
         } catch (Error $e) {
-            // Log::getInstance()->error(
-            //     "Exception: ".$e->getMessage(),
-            //     [
-            //         "sql" => $this->query,
-            //         "bind values" => $this->bindValues
-            //     ]
-            // );
+            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
+                'sql' => $this->query,
+                'bind values' => $this->bindValues
+            ]);
         }
+
         return $flag;
     }
 
@@ -151,23 +125,23 @@ class MysqliDriver extends Database
      *
      * @return bool
      */
-    public function runQuery(string $sql, array $bindValues=[]): bool
+    public function runQuery(string $sql, array $bindValues = []): bool
     {
         $flag = false;
         try {
             $stmt = $this->con->prepare($sql);
-            $paramType = "";
+            $paramType = '';
             foreach ($bindValues as $bindValue) {
                 switch (gettype($bindValue)) {
-                case 'integer':
-                    $paramType .= "i";
-                    break;
-                case 'double':
-                    $paramType .= "d";
-                    break;
-                default:
-                    $paramType .= "s";
-                    break;
+                    case 'integer':
+                        $paramType .= 'i';
+                        break;
+                    case 'double':
+                        $paramType .= 'd';
+                        break;
+                    default:
+                        $paramType .= 's';
+                        break;
                 }
             }
             if (count($bindValues) != 0) {
@@ -179,22 +153,17 @@ class MysqliDriver extends Database
                 $this->result = ($result == false) ? null : $this->result = $result;
             }
         } catch (Mysqli_sql_exception $e) {
-            // Log::getInstance()->error(
-            //     "Exception: ".$e->getMessage(),
-            //     [
-            //         "sql" => $this->query,
-            //         "bind values" => $this->bindValues
-            //     ]
-            // );
+            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
+                'sql' => $this->query,
+                'bind values' => $this->bindValues
+            ]);
         } catch (Error $e) {
-            // Log::getInstance()->error(
-            //     "Error: ".$e->getMessage(),
-            //     [
-            //         "sql" => $this->query,
-            //         "bind values" => $this->bindValues
-            //     ]
-            // );
+            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
+                'sql' => $this->query,
+                'bind values' => $this->bindValues
+            ]);
         }
+
         return $flag;
     }
 
@@ -205,11 +174,6 @@ class MysqliDriver extends Database
      */
     public function close()
     {
-        if (is_resource($this->con)
-            && get_resource_type($this->con)==='mysql link'
-        ) {
-            $this->con->close();
-        }
         $this->con = null;
     }
 
@@ -222,7 +186,6 @@ class MysqliDriver extends Database
     {
         return $this->con->insert_id;
     }
-
 
     /**
      * Begin the transaction

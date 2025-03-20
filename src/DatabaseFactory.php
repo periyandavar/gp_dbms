@@ -1,31 +1,18 @@
 <?php
-/**
- * DatabaseFactory
- * php version 7.3.5
- *
- * @category DatabaseFactory
- * @package  Database
- * @author   Periyandavar <periyandavar@gmail.com>
- * @license  http://license.com license
- * @link     http://url.com
- */
 
 namespace Database;
 
+use DatabaseException;
 use Exception;
+use Loader\Config\ConfigLoader;
 
-/**
- * Creates the instance of the database based on the DbConfig
- *
- * @category DatabaseFactory
- * @package  Database
- * @author   Periyandavar <periyandavar@gmail.com>
- * @license  http://license.com license
- * @link     http://url.com
- */
 class DatabaseFactory
 {
-    private static $_db;
+    private static $db;
+
+    private static $config = [];
+
+    private static $dbs = [];
 
     /**
      * Creates and returns Database instance
@@ -34,25 +21,60 @@ class DatabaseFactory
      */
     public static function create($config)
     {
-        if (isset(self::$_db)) {
-            return self::$_db;
+        if (isset(self::$db)) {
+            return self::$db;
         }
         try {
-            $driver = explode("/", $config['driver']);
-            $driverclass = "Database\\Driver\\" . ucfirst($driver[0]) . 'Driver';
+            $driver = explode('/', $config['driver'] ?? 'Pdo/Mysql');
+            $driverclass = 'Database\\Driver\\' . ucfirst($driver[0]) . 'Driver';
             if (!class_exists($driverclass)) {
-                throw new Exception("Invalid Driver");
+                throw new DatabaseException("Driver class: {$driverclass} not found to create the db instance", DatabaseException::DRIVER_NOT_FOUND_ERROR, null, ['driver' => $driverclass]);
             }
-            $driver = isset($driver[1]) ? $driver[1] : '';
-            self::$_db = $driverclass::getInstance(
+            $driver = $driver[1] ?? '';
+            self::$db = $driverclass::getInstance(
                 $config['host'],
                 $config['user'],
                 $config['password'],
                 $config['database'],
                 $driver
             );
-            return self::$_db;
-        } catch (Exception $exception) {
+
+            return self::$db;
+        } catch (Exception $e) {
+            if ($e instanceof DatabaseException) {
+                throw $e;
+            }
+            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e);
+        }
+    }
+
+    /**
+     * Set up config
+     *
+     * @param ConfigLoader[] $config
+     */
+    public static function setUpConfig(array $config)
+    {
+        if (count($config) === 1 && isset($config[0])) {
+            $config['default'] = $config[0]->getAll();
+
+            return;
+        }
+        foreach ($config as $name => $value) {
+            self::$config[$name] = $value->getAll();
+        }
+    }
+
+    public static function get($name = 'default')
+    {
+        if (isset(self::$dbs[$name])) {
+            return self::$dbs[$name];
+        }
+
+        if (isset(self::$config[$name])) {
+            self::$dbs[$name] = self::create(self::$config[$name]);
+
+            return self::$dbs[$name];
         }
 
         return null;

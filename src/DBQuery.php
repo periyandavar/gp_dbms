@@ -1,14 +1,4 @@
 <?php
-/**
- * DBQuery
- * php version 7.3.5
- *
- * @category DBQuery
- * @package  DBQuery
- * @author   Periyandavar <periyandavar@gmail.com>
- * @license  http://license.com license
- * @link     http://url.com
- */
 
 namespace Database;
 
@@ -17,11 +7,6 @@ namespace Database;
  * DBQuery class consists of basic level functions for various purposes and
  * query building functionality
  *
- * @category DBQuery
- * @package  DBQuery
- * @author   Periyandavar <periyandavar@gmail.com>
- * @license  http://license.com license
- * @link     http://url.com
  */
 class DBQuery
 {
@@ -111,7 +96,7 @@ class DBQuery
      */
     private function _resetQuery()
     {
-        $this->query = null;
+        $this->query = '';
         $this->_table = null;
         $this->_columns = null;
         $this->_sql = null;
@@ -134,18 +119,22 @@ class DBQuery
      * we can call this in any one of the following ways
      * delete('table', 'id = 1') or delete('table')->where('id = 1');
      *
-     * @param string      $table Table Name
-     * @param string|null $where Where condition
+     * @param string            $table Table Name
+     * @param array|string|null $where Where condition
      *
      * @return DBQuery
      */
-    public function delete(string $table, ?string $where = null): DBQuery
+    public function delete(string $table, mixed $where = null): DBQuery
     {
         $this->_resetQuery();
         $this->_sql = "DELETE FROM `$table`";
         if (isset($where)) {
+            if (is_array($where)) {
+                [$where, $this->bindValues] = $this->frameWhere($where);
+            }
             $this->_where = " WHERE $where";
         }
+
         return $this;
     }
 
@@ -156,9 +145,10 @@ class DBQuery
      */
     public function setTo(...$args): DBQuery
     {
-        $change = implode(",", $args);
+        $change = implode(',', $args);
         // $this->_sql .= Utility::endsWith($this->_sql, 'SET ') ? '' : ',';
         $this->_sql .= $change;
+
         return $this;
     }
 
@@ -168,17 +158,17 @@ class DBQuery
      * update('table', ["name"=>"Raja"] ,'id = 1') or
      * update('table',  ["name"=>"Raja"] )->where('id = 1');
      *
-     * @param string      $table  Table Name
-     * @param array       $fields Fields
-     * @param string|null $where  Where condition
-     * @param string|null $join   Join condition
+     * @param string            $table  Table Name
+     * @param array             $fields Fields
+     * @param array|string|null $where  Where condition
+     * @param string|null       $join   Join condition
      *
      * @return DBQuery
      */
     public function update(
         string $table,
         array $fields = [],
-        ?string $where = null,
+        mixed $where = null,
         ?string $join = null
     ): DBQuery {
         $this->_resetQuery();
@@ -186,22 +176,39 @@ class DBQuery
         $index = 1;
         foreach ($fields as $column => $field) {
             $column = trim($column);
-            if (strpos($column, ".")) {
-                $column = explode(".", $column);
-                $column = $column[0] . "`.`" . $column[1];
+            if (strpos($column, '.')) {
+                $column = explode('.', $column);
+                $column = $column[0] . '`.`' . $column[1];
             }
             $set .= "`$column` = ?";
             $this->bindValues[] = $field;
             if ($index < count($fields)) {
-                $set .= ", ";
+                $set .= ', ';
             }
             $index++;
         }
-        $this->_sql = "UPDATE $table " . $join . " SET " . $set;
+        $this->_sql = "UPDATE $table " . $join . ' SET ' . $set;
         if (isset($where)) {
+            if (is_array($where)) {
+                [$where, $bindValues] = $this->frameWhere($where);
+                $this->bindValues = array_merge($this->bindValues, $bindValues);
+            }
             $this->_where = " WHERE $where";
         }
+
         return $this;
+    }
+
+    public function frameWhere($data, $condition = 'AND')
+    {
+        $result = [];
+        $bindValues = [];
+        foreach ($data as $key => $value) {
+            $result[] = "$key = ?";
+            $bindValues[] = $value;
+        }
+
+        return [implode(" $condition ", $result), $bindValues];
     }
 
     /**
@@ -251,6 +258,7 @@ class DBQuery
             $index++;
         }
         $this->_sql = "INSERT INTO $table (`$keys`) VALUES ({$values})";
+
         return $this;
     }
 
@@ -266,27 +274,28 @@ class DBQuery
         $this->_resetQuery();
         for ($i = 0; $i < count($columns); $i++) {
             $columns[$i] = trim($columns[$i]);
-            if (strpos($columns[$i], " ") && strpos($columns[$i], ".")) {
-                $columns[$i] = explode(" ", $columns[$i]);
-                $columns[$i][0] = explode(".", $columns[$i][0]);
-                $columns[$i] = "`"
+            if (strpos($columns[$i], ' ') && strpos($columns[$i], '.')) {
+                $columns[$i] = explode(' ', $columns[$i]);
+                $columns[$i][0] = explode('.', $columns[$i][0]);
+                $columns[$i] = '`'
                     . $columns[$i][0][0]
-                    . "` .`"
+                    . '` .`'
                     . $columns[$i][0][1]
-                    .'` '
+                    . '` '
                     . $columns[$i][1];
-            } elseif (strpos($columns[$i], " ")) {
-                $columns[$i] = explode(" ", $columns[$i]);
-                $columns[$i] = "`" . $columns[$i][0] . "` " . $columns[$i][1];
-            } elseif (strpos($columns[$i], ".")) {
-                $columns[$i] = explode(".", $columns[$i]);
-                $columns[$i] = "`" . $columns[$i][0] . "`.`" . $columns[$i][1] .'`';
+            } elseif (strpos($columns[$i], ' ')) {
+                $columns[$i] = explode(' ', $columns[$i]);
+                $columns[$i] = '`' . $columns[$i][0] . '` ' . $columns[$i][1];
+            } elseif (strpos($columns[$i], '.')) {
+                $columns[$i] = explode('.', $columns[$i]);
+                $columns[$i] = '`' . $columns[$i][0] . '`.`' . $columns[$i][1] . '`';
             } else {
                 $columns[$i] = '`' . $columns[$i] . '`';
             }
         }
         $columns = implode(', ', $columns);
         $this->_columns .= "$columns";
+
         return $this;
     }
     /**
@@ -298,10 +307,11 @@ class DBQuery
      */
     public function selectAs(...$selectData): DBQuery
     {
-        $selectData = implode(",", $selectData);
+        $selectData = implode(',', $selectData);
         $this->_columns = ($this->_columns != null)
-            ? $this->_columns . ", " . $selectData
+            ? $this->_columns . ', ' . $selectData
             : $selectData;
+
         return $this;
     }
 
@@ -313,7 +323,8 @@ class DBQuery
     public function selectAll($reset = true): DBQuery
     {
         $reset && $this->_resetQuery();
-        $this->_columns = "*";
+        $this->_columns = '*';
+
         return $this;
     }
 
@@ -327,13 +338,14 @@ class DBQuery
      */
     public function from(string $tableName): DBQuery
     {
-        if (strpos($tableName, " ")) {
-            $tableName = explode(" ", $tableName);
+        if (strpos($tableName, ' ')) {
+            $tableName = explode(' ', $tableName);
             $tableName = '`' . $tableName[0] . '` ' . $tableName[1];
         } else {
             $tableName = '`' . $tableName . '`';
         }
         $this->_table = $tableName;
+
         return $this;
     }
 
@@ -346,8 +358,9 @@ class DBQuery
      */
     public function appendWhere(string $where): DBQuery
     {
-        $this->_where = $this->_where==null ? '' : $this->_where;
+        $this->_where = $this->_where == null ? '' : $this->_where;
         $this->_where .= $where;
+
         return $this;
     }
 
@@ -381,9 +394,9 @@ class DBQuery
     public function where(...$args): DBQuery
     {
         if ($this->_where == null) {
-            $this->_where .= " WHERE ";
+            $this->_where .= ' WHERE ';
         } else {
-            $this->_where .= " AND ";
+            $this->_where .= ' AND ';
         }
         $count = count($args);
 
@@ -391,12 +404,19 @@ class DBQuery
             $arg = $args[0];
 
             if (is_array($arg)) {
+                $keys = array_keys($arg);
+                if (array_keys($keys) !== $keys) {
+                    [$this->_where, $bindValues] = $this->frameWhere($arg);
+                    $this->bindValues = array_merge($this->bindValues, $bindValues);
+
+                    return $this;
+                }
+
                 $index = 1;
 
                 foreach ($arg as $param) {
                     if ($index != 1) {
-                        $this->_where .= " AND ";
-                        $index++;
+                        $this->_where .= ' AND ';
                     }
                     $parmCount = count($param);
                     if ($parmCount == 1) {
@@ -405,13 +425,14 @@ class DBQuery
                         $this->_where .= $param[0];
                         $this->bindValues[] = $param[1];
                     } elseif ($parmCount == 3) {
-                        $this->_where .= "`"
+                        $this->_where .= '`'
                             . trim($param[0])
-                            . "`"
+                            . '`'
                             . $param[1]
-                            . " ?";
+                            . ' ?';
                         $this->bindValues[] = $param[2];
                     }
+                    $index++;
                 }
             } else {
                 $this->_where .= $arg;
@@ -420,14 +441,15 @@ class DBQuery
             $this->_where .= $args[0];
             $this->bindValues[] = $args[1];
         } elseif ($count == 3) {
-            $field =  trim($args[0]);
-            if (strpos($field, ".")) {
-                $field = explode(".", $field);
-                $field =  $field[0] . "`.`" . $field[1];
+            $field = trim($args[0]);
+            if (strpos($field, '.')) {
+                $field = explode('.', $field);
+                $field = $field[0] . '`.`' . $field[1];
             }
-            $this->_where .= "`" . $field . "`" . $args[1] . " ?";
+            $this->_where .= '`' . $field . '`' . $args[1] . ' ?';
             $this->bindValues[] = $args[2];
         }
+
         return $this;
     }
     /**
@@ -450,9 +472,9 @@ class DBQuery
     public function orWhere(...$args): DBQuery
     {
         if ($this->_where == null) {
-            $this->_where .= " WHERE ";
+            $this->_where .= ' WHERE ';
         } else {
-            $this->_where .= " OR ";
+            $this->_where .= ' OR ';
         }
         $count = count($args);
 
@@ -463,9 +485,8 @@ class DBQuery
                 $index = 1;
 
                 foreach ($arg as $param) {
-                    if ($index != 1) {
-                        $this->_where .= " OR ";
-                        $index++;
+                    if ($index !== 1) {
+                        $this->_where .= ' OR ';
                     }
                     $parmCount = count($param);
                     if ($parmCount == 1) {
@@ -474,11 +495,12 @@ class DBQuery
                         $this->_where .= $param[0];
                         $this->bindValues[] = $param[1];
                     } elseif ($parmCount == 3) {
-                        $this->_where .= "`" . trim($param[0]) . "`"
+                        $this->_where .= '`' . trim($param[0]) . '`'
                              . $param[1]
-                             . " ?";
+                             . ' ?';
                         $this->bindValues[] = $param[2];
                     }
+                    $index++;
                 }
             } else {
                 $this->_where .= $arg;
@@ -487,14 +509,15 @@ class DBQuery
             $this->_where .= $args[0];
             $this->bindValues[] = $args[1];
         } elseif ($count == 3) {
-            $field =  trim($args[0]);
-            if (strpos($field, ".")) {
-                $field = explode(".", $field);
-                $field =  $field[0] . "`.`" . $field[1];
+            $field = trim($args[0]);
+            if (strpos($field, '.')) {
+                $field = explode('.', $field);
+                $field = $field[0] . '`.`' . $field[1];
             }
-            $this->_where .= "`" . $field . "`" . $args[1] . " ?";
+            $this->_where .= '`' . $field . '`' . $args[1] . ' ?';
             $this->bindValues[] = $args[2];
         }
+
         return $this;
     }
 
@@ -506,9 +529,9 @@ class DBQuery
      *
      * @return DBQuery
      */
-    public function limit(int $limit, ?int $offset=null): DBQuery
+    public function limit(int $limit, ?int $offset = null): DBQuery
     {
-        if ($offset ==null) {
+        if ($offset == null) {
             $this->_limit = " LIMIT $limit";
         } else {
             $this->_limit = " LIMIT $offset,$limit";
@@ -527,13 +550,13 @@ class DBQuery
      */
     public function orderBy(string $fieldName, string $order = 'ASC'): DBQuery
     {
-        $fieldName = trim($fieldName);
+        $fieldName = $fieldName ? trim($fieldName) : '';
 
-        $order =  trim(strtoupper($order));
+        $order = trim(strtoupper($order));
 
         // validate it's not empty and have a proper valuse
-        if ($fieldName !== null && ($order == 'ASC' || $order == 'DESC')) {
-            if ($this->_orderby ==null) {
+        if (!empty($fieldName) && ($order == 'ASC' || $order == 'DESC')) {
+            if ($this->_orderby == null) {
                 $this->_orderby = " ORDER BY $fieldName $order";
             } else {
                 $this->_orderby .= ", $fieldName $order";
@@ -560,9 +583,9 @@ class DBQuery
     public function getQuery(): string
     {
         $query = ($this->_sql == '')
-            ? "SELECT "
+            ? 'SELECT '
                 . $this->_columns
-                . " FROM "
+                . ' FROM '
                 . $this->_table
                 . $this->_join
                 . $this->_where
@@ -572,6 +595,7 @@ class DBQuery
                 . $this->_orderby
             : $this->_sql
                 . $this->_where;
+
         return $query;
     }
 
@@ -597,6 +621,7 @@ class DBQuery
         foreach ($values as $value) {
             $this->bindValues[] = $value;
         }
+
         return $this;
     }
 
@@ -609,13 +634,14 @@ class DBQuery
      */
     public function innerJoin(string $tableName): DBQuery
     {
-        if (strpos($tableName, " ")) {
-            $tableName = explode(" ", $tableName);
+        if (strpos($tableName, ' ')) {
+            $tableName = explode(' ', $tableName);
             $tableName = '`' . $tableName[0] . '` ' . $tableName[1];
         } else {
             $tableName = '`' . $tableName . '`';
         }
-        $this->_join .= " INNER JOIN " . $tableName;
+        $this->_join .= ' INNER JOIN ' . $tableName;
+
         return $this;
     }
 
@@ -628,13 +654,14 @@ class DBQuery
      */
     public function leftJoin(string $tableName): DBQuery
     {
-        if (strpos($tableName, " ")) {
-            $tableName = explode(" ", $tableName);
+        if (strpos($tableName, ' ')) {
+            $tableName = explode(' ', $tableName);
             $tableName = '`' . $tableName[0] . '` ' . $tableName[1];
         } else {
             $tableName = '`' . $tableName . '`';
         }
-        $this->_join .= " LEFT JOIN " . $tableName;
+        $this->_join .= ' LEFT JOIN ' . $tableName;
+
         return $this;
     }
 
@@ -647,13 +674,14 @@ class DBQuery
      */
     public function rightJoin(string $tableName): DBQuery
     {
-        if (strpos($tableName, " ")) {
-            $tableName = explode(" ", $tableName);
+        if (strpos($tableName, ' ')) {
+            $tableName = explode(' ', $tableName);
             $tableName = '`' . $tableName[0] . '` ' . $tableName[1];
         } else {
             $tableName = '`' . $tableName . '`';
         }
-        $this->_join .= " Right JOIN " . $tableName;
+        $this->_join .= ' Right JOIN ' . $tableName;
+
         return $this;
     }
 
@@ -666,13 +694,14 @@ class DBQuery
      */
     public function crossJoin(string $tableName): DBQuery
     {
-        if (strpos($tableName, " ")) {
-            $tableName = explode(" ", $tableName);
+        if (strpos($tableName, ' ')) {
+            $tableName = explode(' ', $tableName);
             $tableName = '`' . $tableName[0] . '` ' . $tableName[1];
         } else {
             $tableName = '`' . $tableName . '`';
         }
-        $this->_join .= " CROS JOIN " . $tableName;
+        $this->_join .= ' CROS JOIN ' . $tableName;
+
         return $this;
     }
 
@@ -686,6 +715,7 @@ class DBQuery
     public function on(string $condition): DBQuery
     {
         $this->_join .= ' ON ' . $condition;
+
         return $this;
     }
 
@@ -699,6 +729,7 @@ class DBQuery
     public function using(string $field): DBQuery
     {
         $this->_join .= ' USING(' . $field . ')';
+
         return $this;
     }
 
@@ -709,8 +740,9 @@ class DBQuery
      */
     public function groupBy(...$fields): DBQuery
     {
-        $fields = implode(", ", $fields);
-        $this->_groupby = " GROUP BY " . $fields;
+        $fields = implode(', ', $fields);
+        $this->_groupby = ' GROUP BY ' . $fields;
+
         return $this;
     }
 
@@ -733,9 +765,9 @@ class DBQuery
         if (!empty($this->query)) {
             return $this->query;
         } elseif ($this->_sql == '') {
-            $this->query = "SELECT "
+            $this->query = 'SELECT '
                 . $this->_columns
-                . " FROM "
+                . ' FROM '
                 . $this->_table
                 . $this->_join
                 . $this->_where
@@ -744,7 +776,7 @@ class DBQuery
                 . $this->_orderby
                 . $this->_limit;
         } else {
-            $this->query  = $this->_sql . $this->_where;
+            $this->query = $this->_sql . $this->_where;
         }
 
         return $this->query;

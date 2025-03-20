@@ -1,16 +1,8 @@
 <?php
-/**
- * Database
- * php version 7.3.5
- *
- * @category Database
- * @package  Database
- * @author   Periyandavar <periyandavar@gmail.com>
- * @license  http://license.com license
- * @link     http://url.com
- */
+
 namespace Database;
 
+use DatabaseException;
 use Exception;
 
 /**
@@ -18,11 +10,37 @@ use Exception;
  * Database class consists of basic level functions for various purposes and
  * query building functionality
  *
- * @category Database
- * @package  Database
- * @author   Periyandavar <periyandavar@gmail.com>
- * @license  http://license.com license
- * @link     http://url.com
+ * DBQuery Methods
+ * @method Database delete(string $table, array|string|null $where)
+ * @method Database setTo($args)
+ * @method Database update(string $table, array $fields = [], array|string|null $where = null, ?string $join = null)
+ * @method Database insert(string $table, array $fields = [], array $funcfields = [])
+ * @method Database select($columns)
+ * @method Database selectAs($selectData)
+ * @method Database selectAll($reset)
+ * @method Database from(string $tableName)
+ * @method Database appendWhere(string $where)
+ * @method string   getWhere()
+ * @method Database where(...$args)
+ * @method Database orWhere($args)
+ * @method Database limit(int $limit, ?int $offset)
+ * @method Database orderBy(string $fieldName, string $order)
+ * @method string   getExectedQuery()
+ * @method string   getQuery()
+ * @method array    getBindValues()
+ * @method Database appendBindValues(array $values)
+ * @method Database innerJoin(string $tableName)
+ * @method Database leftJoin(string $tableName)
+ * @method Database rightJoin(string $tableName)
+ * @method Database crossJoin(string $tableName)
+ * @method Database on(string $condition)
+ * @method Database using(string $field)
+ * @method Database groupBy($fields)
+ * @method          setBindValue($values)
+ * @method          setQuery($query)
+ * @method          getSql()
+ * @method Database reset()
+ *
  */
 abstract class Database
 {
@@ -42,16 +60,18 @@ abstract class Database
         $this->dbQuery = new DBQuery();
     }
 
-    public function __call($method, $arguments) {
+    public function __call($method, $arguments)
+    {
         if (method_exists($this->dbQuery, $method)) {
             // Delegate the method call to the $b instance
             $result = call_user_func_array([$this->dbQuery, $method], $arguments);
             if ($result instanceof DBQuery) {
                 return $this;
             }
+
             return $result;
         } else {
-            throw new Exception("Method $method not found");
+            throw new DatabaseException("Method $method not found", DatabaseException::UNKNOWN_METHOD_CALL_ERROR, null, ['method' => $method, 'class' => self::class]);
         }
     }
 
@@ -90,18 +110,17 @@ abstract class Database
      * result set called directly from the object
      * It should return a single row result as object on success and null on failure
      *
-     * @return :object|bool|null
+     * @return object|bool|null
      */
-    abstract public function fetch(); //:object|bool|null;
+    abstract public function fetch(); //object|bool|null;
 
     /**
      * Disabling cloning the object from outside the class
-     * 
+     *
      * @return void
      */
     private function __clone()
     {
-
     }
 
     /**
@@ -109,11 +128,11 @@ abstract class Database
      * instance of the class in
      * singleton approch
      *
-     * @param string $host   host name
-     * @param string $user   User name
-     * @param string $pass   Password
-     * @param string $db     database
-     * @param string $driver Driver
+     * @param string $host    host name
+     * @param string $user    User name
+     * @param string $pass    Password
+     * @param string $db      database
+     * @param array  $configs Other Configs
      *
      * @return Database
      */
@@ -122,7 +141,7 @@ abstract class Database
         string $user,
         string $pass,
         string $db,
-        string $driver
+        array $configs = []
     );
 
     /**
@@ -137,7 +156,6 @@ abstract class Database
      */
     protected $query;
 
-
     /**
      * This will contains the values to be bind
      *
@@ -145,22 +163,21 @@ abstract class Database
      */
     protected $bindValues;
 
-
     /**
      * Query function to run directly raw query with or without bind values
      *
-     * @param string $query sql
-     * @param array  $bindValues  bind values
+     * @param string $query      sql
+     * @param array  $bindValues bind values
      *
      * @return bool
      */
     public function query(string $query, array $bindValues = []): bool
     {
-        // $this->_resetQuery();
         $query = trim($query);
         $this->query = $query;
         $this->bindValues = $bindValues;
         $result = $this->runQuery($this->query, $this->bindValues);
+
         return $result;
     }
 
@@ -189,6 +206,7 @@ abstract class Database
             return false;
         }
         $this->dbQuery->reset();
+
         return $result;
     }
 
@@ -202,7 +220,8 @@ abstract class Database
      */
     public function set(string $name, string $value): bool
     {
-        $this->query = "SET " . $name . " = " . $value;
+        $this->query = 'SET ' . $name . ' = ' . $value;
+
         return $this->executeQuery();
     }
 
@@ -213,7 +232,8 @@ abstract class Database
      */
     public function begin(): bool
     {
-        $this->query = "START TRANSACTION";
+        $this->query = 'START TRANSACTION';
+
         return $this->executeQuery();
     }
 
@@ -224,7 +244,7 @@ abstract class Database
      */
     public function commit(): bool
     {
-        return $this->runQuery("COMMIT");
+        return $this->runQuery('COMMIT');
     }
 
     /**
@@ -234,7 +254,7 @@ abstract class Database
      */
     public function rollback(): bool
     {
-        return $this->runQuery("ROLLBACK");
+        return $this->runQuery('ROLLBACK');
     }
 
     abstract public function escape(string $value): string;
@@ -243,6 +263,7 @@ abstract class Database
     {
         $this->dbQuery->limit(1);
         $this->execute();
+
         return $this->fetch();
     }
 
@@ -253,12 +274,14 @@ abstract class Database
         while ($row = $this->fetch()) {
             $data[] = $row;
         }
+
         return $data;
     }
 
     public function setQuery($query)
     {
         $this->query = $query;
+
         return $this;
     }
 

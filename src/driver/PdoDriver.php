@@ -1,33 +1,12 @@
 <?php
-/**
- * PdoDriver File Doc Comment
- * php version 7.3.5
- *
- * @category Database
- * @package  Database
- * @author   Periyandavar <periyandavar@gmail.com>
- * @license  http://license.com license
- * @link     http://url.com
- */
 
 namespace Database\Driver;
 
 use Database\Database;
+use DatabaseException;
+use Error;
 use Pdo;
 use PdoException;
-use Error;
-
-defined('VALID_REQ') or exit('Invalid request');
-/**
- * PdoDriver Class Handles the data base operations with PDO connection
- *
- * @category   Database
- * @package    Database
- * @subpackage PdoDriver
- * @author     Periyandavar <periyandavar@gmail.com>
- * @license    http://license.com license
- * @link       http://url.com
- */
 
 class PdoDriver extends Database
 {
@@ -38,46 +17,43 @@ class PdoDriver extends Database
      * @param string $user   User Name
      * @param string $pass   Password
      * @param string $db     Database Name
-     * @param string $driver Driver Name
+     * @param array  $config Other Configs
      */
     private function __construct(
         string $host,
         string $user,
         string $pass,
         string $db,
-        string $driver
+        array $config = []
     ) {
         try {
             parent::__construct();
+            $driver = $config['driver'] ?? 'mysql';
             $this->con = new PDO("$driver:host=$host;dbname=$db;", $user, $pass);
             $this->con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->con->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_NUM);
         } catch (PDOException $e) {
-            // Log::getInstance()->fatal(
-            //     "Unable to establish db connection, ". $e->getMessage(),
-            // );
-            die();
+            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_CONNECTION_ERROR);
         }
     }
 
     /**
      * Disabling cloning the object from outside the class
-     * 
+     *
      * @return void
      */
     private function __clone()
     {
-        
     }
 
     /**
      * Return same PdoDriver instance to perform singletone
      *
-     * @param string $host   Host Name
-     * @param string $user   User Name
-     * @param string $pass   Password
-     * @param string $db     Database Name
-     * @param string $driver Driver Name
+     * @param string $host    Host Name
+     * @param string $user    User Name
+     * @param string $pass    Password
+     * @param string $db      Database Name
+     * @param array  $configs Other Configs
      *
      * @return PdoDriver
      */
@@ -86,10 +62,11 @@ class PdoDriver extends Database
         string $user,
         string $pass,
         string $db,
-        string $driver
+        array $configs = []
     ) {
         self::$instance = self::$instance
-            ?? new static($host, $user, $pass, $db, $driver);
+            ?? new self($host, $user, $pass, $db, $configs);
+
         return self::$instance;
     }
 
@@ -104,7 +81,7 @@ class PdoDriver extends Database
         try {
             $stmt = $this->con->prepare($this->query);
             $index = 1;
-            foreach ((array)$this->bindValues as $bindValue) {
+            foreach ((array) $this->bindValues as $bindValue) {
                 $paramType = gettype($bindValue) == 'integer'
                     ? PDO::PARAM_INT
                     : PDO::PARAM_STR;
@@ -116,22 +93,17 @@ class PdoDriver extends Database
                 $this->result = $stmt;
             }
         } catch (PDOException $e) {
-            // Log::getInstance()->error(
-            //     "Exception: ".$e->getMessage(),
-            //     [
-            //         "sql" => $this->query,
-            //         "bind values" => $this->bindValues
-            //     ]
-            // );
+            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
+                'sql' => $this->query,
+                'bind values' => $this->bindValues
+            ]);
         } catch (Error $e) {
-            // Log::getInstance()->error(
-            //     "Exception: ".$e->getMessage(),
-            //     [
-            //         "sql" => $this->query,
-            //         "bind values" => $this->bindValues
-            //     ]
-            // );
+            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
+                'sql' => $this->query,
+                'bind values' => $this->bindValues
+            ]);
         }
+
         return $flag;
     }
 
@@ -153,7 +125,7 @@ class PdoDriver extends Database
      *
      * @return bool
      */
-    public function runQuery(string $sql, array $bindValues=[]): bool
+    public function runQuery(string $sql, array $bindValues = []): bool
     {
         $flag = false;
         try {
@@ -161,14 +133,14 @@ class PdoDriver extends Database
             $index = 1;
             foreach ($bindValues as $bindValue) {
                 switch (gettype($bindValue)) {
-                case 'integer':
-                    $paramType = PDO::PARAM_INT;
-                    break;
-                default:
-                    $paramType = PDO::PARAM_STR;
-                    break;
+                    case 'integer':
+                        $paramType = PDO::PARAM_INT;
+                        break;
+                    default:
+                        $paramType = PDO::PARAM_STR;
+                        break;
                 }
-                $stmt->bindValue($index, $value, $paramType);
+                $stmt->bindValue($index, $bindValue, $paramType);
                 $index++;
             }
             $flag = $stmt->execute();
@@ -176,22 +148,17 @@ class PdoDriver extends Database
                 $this->result = $stmt;
             }
         } catch (PDOException $e) {
-            // Log::getInstance()->error(
-            //     "Exception: ".$e->getMessage(),
-            //     [
-            //         "sql" => $this->query,
-            //         "bind values" => $this->bindValues
-            //     ]
-            // );
+            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
+                'sql' => $this->query,
+                'bind values' => $this->bindValues
+            ]);
         } catch (Error $e) {
-            // Log::getInstance()->error(
-            //     "Exception: ".$e->getMessage(),
-            //     [
-            //         "sql" => $this->query,
-            //         "bind values" => $this->bindValues
-            //     ]
-            // );
+            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
+                'sql' => $this->query,
+                'bind values' => $this->bindValues
+            ]);
         }
+
         return $flag;
     }
 

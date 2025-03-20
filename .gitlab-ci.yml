@@ -1,0 +1,22 @@
+stages:
+  - test
+  - sonar
+
+test:
+  stage: test
+  image: php:8
+  before_script:
+    - apt-get update && apt-get install -y git unzip
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    - composer install
+  script:
+    - XDEBUG_MODE=coverage vendor/bin/phpunit --coverage-clover coverage.xml
+  artifacts:
+    paths:
+      - coverage.xml
+
+sonar:
+  stage: sonar
+  image: sonarsource/sonar-scanner-cli
+  script:
+    - sonar-scanner -Dsonar.projectKey=YOUR_PROJECT_KEY -Dsonar.sources=src -Dsonar.php.coverage.reportPaths=coverage.xml
