@@ -11,7 +11,7 @@ use DatabaseException;
 use Loader\Container;
 
 /**
- * 
+ *
  */
 abstract class Model
 {
@@ -123,7 +123,7 @@ abstract class Model
     /**
      * Update the model.
      *
-     * @param array $_data
+     * @param array  $_data
      * @param string $_where
      */
     private function update($_data, $_where)
@@ -235,7 +235,7 @@ abstract class Model
         }
 
         $model = self::getModel($result);
-        
+
         $model->setIsLoadedByOrm(true);
 
         return $model;
@@ -243,7 +243,7 @@ abstract class Model
 
     private static function getModel($result)
     {
-        $result = (array)$result;
+        $result = (array) $result;
         $model = static::loadFromDbRow($result);
 
         return $model;
@@ -253,14 +253,13 @@ abstract class Model
      * Handle with
      *
      * @param Model[] $models
-     * @param Model $ref
+     * @param Model   $ref
      *
      * @return array
      */
     private static function loadWith(array $models, Model $ref)
     {
         $updatedModels = $models;
-        
 
         if (empty($models)) {
             return $updatedModels;
@@ -273,29 +272,29 @@ abstract class Model
             return $updatedModels;
         }
 
-            foreach ($withModels as $with) {
-                $relation = $relations[$with];
-                if (isset($relation)) {
-                    self::handleRelation($relation, $updatedModels, $with);
-                }
+        foreach ($withModels as $with) {
+            $relation = $relations[$with];
+            if (isset($relation)) {
+                self::handleRelation($relation, $updatedModels, $with);
             }
+        }
 
-            return $updatedModels;
+        return $updatedModels;
     }
 
     /**
      * Handle relations
      *
      * @param \Database\Orm\Relation\Relation $relation
-     * @param Model[] $models
-     * 
+     * @param Model[]                         $models
+     *
      * @return array
      */
     private static function handleRelation(Relation $relation, $models, string $with)
-    { 
+    {
         $updatedModels = [];
         $fk = $relation->getForeignKey();
-        $fkValues = array_map(function ($model) use ($fk) {
+        $fkValues = array_map(function($model) use ($fk) {
             return $model->$fk;
         }, $updatedModels);
 
@@ -317,12 +316,10 @@ abstract class Model
             return $updatedModels;
         }
 
-        return array_map(function ($model) use ($result, $with) {
+        return array_map(function($model) use ($result, $with) {
             $model->$with = $result;
-        }, $updatedModels );
+        }, $updatedModels);
     }
-
-    
 
     /**
      * Load the model from the database row.
@@ -414,7 +411,7 @@ abstract class Model
         $calledClass = get_called_class();
         $dbQuery = $query ?? (new DBQuery());
         $dbQuery->selectAll(false)->from(self::getTableName());
-        
+
         $model = new $calledClass();
         $model->setDbQuery($dbQuery);
 
@@ -440,7 +437,7 @@ abstract class Model
         if (! $result) {
             return [];
         }
-        
+
         $models = [];
         foreach ($result as $row) {
             $row = (array) $row;
@@ -609,8 +606,8 @@ abstract class Model
         if (property_exists($this, $name) && isset($this->relations[$name])) {
             $relation = $this->relations[$name];
             $this->$name = $relation->handle();
-
         }
+
         return $this->attr[$name] ?? null;
     }
 
@@ -683,9 +680,11 @@ abstract class Model
     {
         if (is_array($with)) {
             $this->with_models = array_merge($this->with_models, $with);
+
             return $this;
         }
         $this->with_models[] = $with;
+
         return $this;
     }
 
@@ -702,6 +701,7 @@ abstract class Model
     public function reload()
     {
         $primaryKey = $this->getUniqueId();
+
         return self::find($this->$primaryKey);
     }
 }

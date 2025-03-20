@@ -13,7 +13,7 @@ class HasMany extends Relation
         $foriegnKey = $this->foreignKey;
         $query->where([$this->primaryKey = $this->model->$foriegnKey]);
 
-        if ( get_parent_class($this->relatedModel) != Model::class) {
+        if (get_parent_class($this->relatedModel) != Model::class) {
             return [];
         }
 
