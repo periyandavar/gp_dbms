@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "54c82a3b336c958f78dcaa8855a84b31",
+    "content-hash": "17994c6dfa3ff8096d33e914e75ed880",
     "packages": [
         {
             "name": "gp/loader",
