@@ -3,7 +3,7 @@
 namespace Database\Driver;
 
 use Database\Database;
-use DatabaseException;
+use Database\Exception\DatabaseException;
 use Error;
 use Pdo;
 use PdoException;

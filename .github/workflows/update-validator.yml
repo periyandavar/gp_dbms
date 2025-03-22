@@ -1,0 +1,40 @@
+name: Update Validator Package
+
+on:
+  workflow_dispatch:  # Allows manual triggering of the workflow
+
+jobs:
+  update-package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.target_branch }}
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'  # Specify your PHP version
+          extensions: mbstring, xml, curl  # Add any required extensions
+
+      - name: Install Composer dependencies
+        run: composer install
+
+      - name: Update specific package
+        run: composer update gp/validator
+
+      - name: Check for changes
+        run: |
+          git config --local user.email "vickyperiyandavar@gmail.com"
+          git config --local user.name "GitHub Action"
+          git diff --exit-code || echo "Changes detected"
+
+      - name: Commit and push changes
+        run: |
+          git add composer.json composer.lock
+          git commit -m "feat: update gp/validator to latest version" || echo "No changes to commit"
+          git push origin ${{ github.event.inputs.target_branch }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

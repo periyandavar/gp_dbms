@@ -9,19 +9,17 @@ class HasOne extends Relation
 {
     public function handle()
     {
-        $query = $this->query ?? new DBQuery();
-        $foriegnKey = $this->foreignKey;
-        $query->where([$this->primaryKey = $this->model->$foriegnKey]);
+        $class = $this->relatedModel;
+        $this->query = $this->query ?? (new DBQuery())->selectAll()->from($class::getTableName());
+        $primarykey = $this->primaryKey;
+        $this->query->where("{$this->foreignKey} = {$this->model->$primarykey}");
 
-        if (get_parent_class($this->relatedModel) != Model::class) {
-            return [];
-        }
-
+        $class = $this->relatedModel;
         /**
-         * @var \Database\Orm\Model
+         * @var Model
          */
-        $targetModel = new ${$this->relatedModel}();
+        $targetModel = new $class();
 
-        return $targetModel->select($query)->one();
+        return $targetModel->select($this->query)->one();
     }
 }

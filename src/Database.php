@@ -2,7 +2,7 @@
 
 namespace Database;
 
-use DatabaseException;
+use Database\Exception\DatabaseException;
 use Exception;
 
 /**

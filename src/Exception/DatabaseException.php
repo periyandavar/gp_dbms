@@ -1,5 +1,10 @@
 <?php
 
+namespace Database\Exception;
+
+use Exception;
+use Throwable;
+
 class DatabaseException extends Exception
 {
     protected array $errorData = [];
