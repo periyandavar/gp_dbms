@@ -3,7 +3,9 @@
     "description": "Simple PHP Database tool with QueryParam class supports mysqli and pdo",
     "type": "library",
     "require": {
-        "gp/loader": "^1.0"
+        "php": "^8.0",
+        "gp/loader": "^1.0",
+        "gp/validator": "^1.0"
     },
     "license": "MIT",
     "authors": [{

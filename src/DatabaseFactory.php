@@ -2,7 +2,7 @@
 
 namespace Database;
 
-use DatabaseException;
+use Database\Exception\DatabaseException;
 use Exception;
 use Loader\Config\ConfigLoader;
 
@@ -30,7 +30,6 @@ class DatabaseFactory
             if (!class_exists($driverclass)) {
                 throw new DatabaseException("Driver class: {$driverclass} not found to create the db instance", DatabaseException::DRIVER_NOT_FOUND_ERROR, null, ['driver' => $driverclass]);
             }
-            $driver = $driver[1] ?? '';
             self::$db = $driverclass::getInstance(
                 $config['host'],
                 $config['user'],

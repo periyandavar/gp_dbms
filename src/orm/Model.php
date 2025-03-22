@@ -2,13 +2,14 @@
 
 namespace Database\Orm;
 
-use Database\DatabaseFactory;
 use Database\DBQuery;
+use Database\Exception\DatabaseException;
 use Database\Orm\Relation\HasMany;
 use Database\Orm\Relation\HasOne;
 use Database\Orm\Relation\Relation;
-use DatabaseException;
 use Loader\Container;
+use Validator\Field\Field;
+use Validator\Field\Fields;
 
 /**
  *
@@ -51,6 +52,13 @@ abstract class Model
 
     private $relations = [];
 
+    private $fields;
+
+    public function __construct()
+    {
+        $this->setField();
+    }
+
     /**
      * Set/unset the trigger event flag.
      *
@@ -78,7 +86,6 @@ abstract class Model
         $db->reset();
 
         if (! $value) {
-            // var_export($field_values);exit;
             return $this->insert($field_values);
         }
 
@@ -133,7 +140,6 @@ abstract class Model
 
         $this->triggerEvent(Events::EVENT_BEFORE_SAVE);
         $this->triggerEvent(Events::EVENT_BEFORE_UPDATE);
-
         $result = $db->update(static::getTableName(), $_data, $_where)->execute();
 
         if ($result) {
@@ -154,11 +160,15 @@ abstract class Model
         $db = static::getDb();
         $db->reset();
 
+        foreach ($_data as $key => $value) {
+            if (in_array($key, $this->skipInsertOn())) {
+                unset($_data[$key]);
+            }
+        }
+
         $this->triggerEvent(Events::EVENT_BEFORE_SAVE);
         $this->triggerEvent(Events::EVENT_BEFORE_INSERT);
-
         $result = $db->insert($this->getTableName(), $_data)->execute();
-
         if ($result) {
             $this->triggerEvent(Events::EVENT_AFTER_SAVE);
             $this->triggerEvent(Events::EVENT_AFTER_INSERT);
@@ -174,9 +184,7 @@ abstract class Model
      */
     protected static function getDb()
     {
-        if (! static::$db) {
-            self::$db = DatabaseFactory::get();
-        }
+        static::$db = static::$db ?? Container::get('db');
 
         return static::$db;
     }
@@ -197,15 +205,17 @@ abstract class Model
      */
     public function delete()
     {
-        $db = static::getDb();
         [$key, $value] = $this->getUniqueId();
+        $use_delete = $this->useDelete();
+        if (!(empty($use_delete))) {
+            return $this->update($use_delete, "$key = $value");
+        }
+        $db = static::getDb();
 
         if (empty($value)) {
             return;
         }
-        $table_name = static::getTableName();
         $db->delete(static::getTableName(), "$key = $value");
-        // $sql = "DELETE FROM {} WHERE {$db->escape($key)} = '{$db->escape($value)}'";
 
         return $db->execute();
     }
@@ -228,7 +238,7 @@ abstract class Model
             $query->where($key, '=', $_identifier);
         }
 
-        $query->selectAll(false)->from(self::getTableName());
+        $query->selectAll(false)->from(static::getTableName());
         $result = $db->setDbQuery($query)->getOne();
         if (! $result) {
             return null;
@@ -266,6 +276,12 @@ abstract class Model
         }
 
         $withModels = $ref->getWithModels();
+        foreach ($withModels as $with) {
+            if (method_exists($ref, $with)) {
+                $ref->$with();
+            }
+        }
+
         $relations = $ref->getRelations();
 
         if (empty($withModels) || empty($relations)) {
@@ -292,17 +308,20 @@ abstract class Model
      */
     private static function handleRelation(Relation $relation, $models, string $with)
     {
-        $updatedModels = [];
+        $isHasMany = $relation instanceof HasMany;
+        $updatedModels = $models;
         $fk = $relation->getForeignKey();
-        $fkValues = array_map(function($model) use ($fk) {
-            return $model->$fk;
+        $pk = $relation->getPrimaryKey();
+        $key1 = $isHasMany ? $pk : $fk;
+        $key2 = $isHasMany ? $fk : $pk;
+        $fkValues = array_map(function($model) use ($key1) {
+            return $model->$key1;
         }, $updatedModels);
 
         $fkValues = implode(',', $fkValues);
         $relationClass = $relation->getRelatedModel();
-        $primaryKey = $relation->getPrimaryKey();
 
-        $dbQuery = (new DBQuery())->selectAll()->from($relationClass::getTableName())->where(" {$primaryKey} IN ($fkValues) ");
+        $dbQuery = (new DBQuery())->selectAll()->from($relationClass::getTableName())->where(" {$key2} IN ($fkValues) ");
         $result = false;
         if ($relation instanceof HasOne) {
             $result = (new $relationClass())->setDbQuery($dbQuery)->one();
@@ -316,8 +335,10 @@ abstract class Model
             return $updatedModels;
         }
 
-        return array_map(function($model) use ($result, $with) {
-            $model->$with = $result;
+        return array_map(function($model) use ($result, $with, $key1, $key2) {
+            $model->$with = array_values(array_filter($result, function($m) use ($key2, $key1, $model) {
+                return $model->$key1 === $m->$key2;
+            }));
         }, $updatedModels);
     }
 
@@ -374,8 +395,6 @@ abstract class Model
     public function toDbRow()
     {
         if (!empty($this->attr)) {
-            var_export($this->attr);
-
             return $this->attr;
         }
         $result = [];
@@ -410,7 +429,7 @@ abstract class Model
     {
         $calledClass = get_called_class();
         $dbQuery = $query ?? (new DBQuery());
-        $dbQuery->selectAll(false)->from(self::getTableName());
+        $dbQuery->selectAll(false)->from(static::getTableName());
 
         $model = new $calledClass();
         $model->setDbQuery($dbQuery);
@@ -420,6 +439,9 @@ abstract class Model
     public function one()
     {
         $db = static::getDb();
+        // if (! $this->dbQuery) {
+        //     $this->dbQuery =
+        // }
         $result = $db->setDbQuery($this->dbQuery)->getOne();
         if (! $result) {
             return null;
@@ -492,7 +514,7 @@ abstract class Model
         if ($_query instanceof DBQuery) {
             $query = $_query;
         }
-        $query->selectAll(false)->from(self::getTableName())->getQuery();
+        $query->selectAll(false)->from(static::getTableName())->getQuery();
         $db->setDbQuery($query);
         $result = $db->getAll();
 
@@ -508,7 +530,6 @@ abstract class Model
         foreach ($result as $row) {
             $row = (array) $row;
             $model = static::loadFromDbRow($row);
-            // var_export($model->id);exit;
             $model->setIsLoadedByOrm(true);
             $models[] = $model;
         }
@@ -603,9 +624,12 @@ abstract class Model
 
     public function __get($name)
     {
-        if (property_exists($this, $name) && isset($this->relations[$name])) {
-            $relation = $this->relations[$name];
-            $this->$name = $relation->handle();
+        if (method_exists($this, $name)) {
+            $this->$name();
+            if (isset($this->relations[$name])) {
+                $relation = $this->relations[$name];
+                $this->$name = $relation->handle();
+            }
         }
 
         return $this->attr[$name] ?? null;
@@ -642,7 +666,7 @@ abstract class Model
         }
     }
 
-    public function hasOne(string $relatedModelClass, string $foreignKey, string $primaryKey, DBQuery $query)
+    public function hasOne(string $relatedModelClass, string $foreignKey, string $primaryKey, ?DBQuery $query = null)
     {
         $backtrace = debug_backtrace();
         $name = $backtrace[1]['function'] ?? null;
@@ -650,15 +674,15 @@ abstract class Model
             return null;
         }
 
-        $hasOne = new HasOne($this, $relatedModelClass, $foreignKey, $foreignKey, $query);
+        $hasOne = new HasOne($this, $primaryKey, $relatedModelClass, $foreignKey, $query);
         $this->relations[$name] = $hasOne;
 
         return $hasOne->handle();
     }
 
-    public function hasMany(string $relatedModelClass, string $foreignKey, string $primaryKey, DBQuery $query)
+    public function hasMany(string $relatedModelClass, string $foreignKey, string $primaryKey, ?DBQuery $query = null)
     {
-        $hasMany = new HasMany($this, $relatedModelClass, $foreignKey, $foreignKey, $query);
+        $hasMany = new HasMany($this, $primaryKey, $relatedModelClass, $foreignKey, $query);
         $backtrace = debug_backtrace();
         $name = $backtrace[1]['function'] ?? null;
         if (! isset($name)) {
@@ -703,5 +727,60 @@ abstract class Model
         $primaryKey = $this->getUniqueId();
 
         return self::find($this->$primaryKey);
+    }
+
+    public function skipInsertOn()
+    {
+        return [];
+    }
+
+    public function setValues($data)
+    {
+        foreach ($data as $key => $value) {
+            $this->$key = $value;
+        }
+    }
+
+    public function validate()
+    {
+        $this->fields->setValues($this->getValues());
+
+        return $this->fields->validate();
+    }
+
+    public function getValues()
+    {
+        return $this->toDbRow();
+    }
+
+    public function getErrors()
+    {
+        return $this->fields->getErrors();
+    }
+
+    public function getError()
+    {
+        return $this->fields->getError();
+    }
+
+    public function getRules()
+    {
+        return [];
+    }
+
+    public function setField()
+    {
+        $rules = $this->getRules();
+        $this->fields = new Fields();
+        foreach ($rules as $name => $rule) {
+            $rules = $rule[0] ?? [];
+            $messages = $rule[1] ?? [];
+            $this->fields->addField(new Field($name, $this->$name, $rules, $messages));
+        }
+    }
+
+    public function useDelete()
+    {
+        return [];
     }
 }
