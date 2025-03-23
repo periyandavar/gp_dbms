@@ -11,12 +11,21 @@ class MysqliDriverTest extends TestCase
 
     protected function setUp(): void
     {
+        // Mock the mysqli_result object
+        $mockResult = m::mock(mysqli_result::class);
+        $mockResult->shouldReceive('fetch_object')->andReturn((object) ['id' => 1, 'name' => 'Test']);
+        $mockResult->shouldReceive('fetch_all')->andReturn([
+            (object) ['id' => 1, 'name' => 'Test1'],
+            (object) ['id' => 2, 'name' => 'Test2'],
+        ]);
+        $mockResult->shouldReceive('free')->andReturn(true);
+
         // Mock the mysqli_stmt object
         $this->mockStmt = m::mock(mysqli_stmt::class);
         $this->mockStmt->shouldReceive('bind_param')->andReturn(true);
         $this->mockStmt->shouldReceive('execute')->andReturn(true);
-        $this->mockStmt->shouldReceive('get_result')->andReturnSelf();
-        $this->mockStmt->shouldReceive('fetch_object')->andReturn((object) ['id' => 1, 'name' => 'Test']);
+        $this->mockStmt->shouldReceive('get_result')->andReturn($mockResult); // Return the mocked mysqli_result
+        $this->mockStmt->shouldReceive('fetch_object')->andReturn((object) ['id' => 1, 'name' => 'Test']); // Mock fetch_object
         $this->mockStmt->shouldReceive('close')->andReturn(true);
 
         // Mock the mysqli object
