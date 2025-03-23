@@ -50,16 +50,16 @@
         },
         {
             "name": "gp/validator",
-            "version": "v1.0.0",
+            "version": "v1.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/periyandavar/gp_validator.git",
-                "reference": "300bc6d3e0823fd7e9204e70bd240e0b10b71946"
+                "reference": "ee1d13adb52b95361fc30bcc120086f69939005b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/periyandavar/gp_validator/zipball/300bc6d3e0823fd7e9204e70bd240e0b10b71946",
-                "reference": "300bc6d3e0823fd7e9204e70bd240e0b10b71946",
+                "url": "https://api.github.com/repos/periyandavar/gp_validator/zipball/ee1d13adb52b95361fc30bcc120086f69939005b",
+                "reference": "ee1d13adb52b95361fc30bcc120086f69939005b",
                 "shasum": ""
             },
             "require": {
@@ -90,9 +90,9 @@
             "description": "A validator package for php web application",
             "support": {
                 "issues": "https://github.com/periyandavar/gp_validator/issues",
-                "source": "https://github.com/periyandavar/gp_validator/tree/v1.0.0"
+                "source": "https://github.com/periyandavar/gp_validator/tree/v1.0.1"
             },
-            "time": "2025-03-22T16:48:21+00:00"
+            "time": "2025-03-23T05:35:50+00:00"
         },
         {
             "name": "hamcrest/hamcrest-php",
