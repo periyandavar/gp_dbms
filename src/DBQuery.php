@@ -29,7 +29,7 @@ class DBQuery
      *
      * @var array $bindValues
      */
-    private $bindValues;
+    private $bindValues = [];
 
     /**
      * This will has the table name if its select query
@@ -418,6 +418,7 @@ class DBQuery
                     if ($index != 1) {
                         $this->_where .= ' AND ';
                     }
+                    $param = (array) $param;
                     $parmCount = count($param);
                     if ($parmCount == 1) {
                         $this->_where .= $param;

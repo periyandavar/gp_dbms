@@ -11,7 +11,7 @@ abstract class Relation
     protected string $primaryKey;
     protected string $relatedModel;
     protected string $foreignKey;
-    protected DBQuery $query;
+    protected ?DBQuery $query;
     protected $data = null;
 
     public function __construct(Model $model, string $primaryKey, string $relatedModel, string $foreignKey, $query = null)

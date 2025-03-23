@@ -2,7 +2,7 @@
 
 namespace Database;
 
-use DatabaseException;
+use Database\Exception\DatabaseException;
 use Exception;
 
 /**
@@ -11,7 +11,7 @@ use Exception;
  * query building functionality
  *
  * DBQuery Methods
- * @method Database delete(string $table, array|string|null $where)
+ * @method Database delete(string $table, array|string|null $where = null)
  * @method Database setTo($args)
  * @method Database update(string $table, array $fields = [], array|string|null $where = null, ?string $join = null)
  * @method Database insert(string $table, array $fields = [], array $funcfields = [])
@@ -23,7 +23,7 @@ use Exception;
  * @method string   getWhere()
  * @method Database where(...$args)
  * @method Database orWhere($args)
- * @method Database limit(int $limit, ?int $offset)
+ * @method Database limit(int $limit, ?int $offset = 0)
  * @method Database orderBy(string $fieldName, string $order)
  * @method string   getExectedQuery()
  * @method string   getQuery()
@@ -161,7 +161,7 @@ abstract class Database
      *
      * @var array $bindValues
      */
-    protected $bindValues;
+    protected $bindValues = [];
 
     /**
      * Query function to run directly raw query with or without bind values
