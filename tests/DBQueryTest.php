@@ -1,7 +1,7 @@
 <?php
 
-use PHPUnit\Framework\TestCase;
 use Database\DBQuery;
+use PHPUnit\Framework\TestCase;
 
 class DBQueryTest extends TestCase
 {

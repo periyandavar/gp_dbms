@@ -278,9 +278,10 @@ abstract class Database
         return $data;
     }
 
-    public function setQuery($query)
+    public function setQuery($query, $bindValues = [])
     {
         $this->query = $query;
+        $this->bindValues = $bindValues;
 
         return $this;
     }
