@@ -2,7 +2,7 @@
 
 namespace Database;
 
-use DatabaseException;
+use Database\Exception\DatabaseException;
 use Exception;
 
 /**
@@ -161,7 +161,7 @@ abstract class Database
      *
      * @var array $bindValues
      */
-    protected $bindValues;
+    protected $bindValues = [];
 
     /**
      * Query function to run directly raw query with or without bind values
