@@ -8,17 +8,20 @@
     "packages": [
         {
             "name": "gp/loader",
-            "version": "v1.1.2",
+            "version": "v1.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/periyandavar/gp_loader.git",
-                "reference": "e4e653d83ed0dfd1c9c1599f63b56c5f2ef48304"
+                "reference": "b4c08f62252cae9c1c8b5d0b70c4a4c9385cf87a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/periyandavar/gp_loader/zipball/e4e653d83ed0dfd1c9c1599f63b56c5f2ef48304",
-                "reference": "e4e653d83ed0dfd1c9c1599f63b56c5f2ef48304",
+                "url": "https://api.github.com/repos/periyandavar/gp_loader/zipball/b4c08f62252cae9c1c8b5d0b70c4a4c9385cf87a",
+                "reference": "b4c08f62252cae9c1c8b5d0b70c4a4c9385cf87a",
                 "shasum": ""
+            },
+            "require": {
+                "php": "^8.0"
             },
             "require-dev": {
                 "friendsofphp/php-cs-fixer": "^3.72",
@@ -44,9 +47,9 @@
             "description": "A Loader library to autoload the classes and a container to support the dependency injections",
             "support": {
                 "issues": "https://github.com/periyandavar/gp_loader/issues",
-                "source": "https://github.com/periyandavar/gp_loader/tree/v1.1.2"
+                "source": "https://github.com/periyandavar/gp_loader/tree/v1.2.0"
             },
-            "time": "2025-03-18T16:09:41+00:00"
+            "time": "2025-03-23T06:13:04+00:00"
         },
         {
             "name": "gp/validator",
@@ -4583,12 +4586,12 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": [],
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.0"
     },
-    "platform-dev": {},
+    "platform-dev": [],
     "plugin-api-version": "2.6.0"
 }

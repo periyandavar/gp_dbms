@@ -4,7 +4,6 @@ namespace Database\Driver;
 
 use Database\Database;
 use Database\Exception\DatabaseException;
-use Error;
 use Pdo;
 use PdoException;
 
@@ -77,34 +76,26 @@ class PdoDriver extends Database
      */
     public function executeQuery(): bool
     {
-        $flag = false;
-        try {
-            $stmt = $this->con->prepare($this->query);
-            $index = 1;
-            foreach ((array) $this->bindValues as $bindValue) {
-                $paramType = gettype($bindValue) == 'integer'
-                    ? PDO::PARAM_INT
-                    : PDO::PARAM_STR;
-                $stmt->bindValue($index, $bindValue, $paramType);
-                $index++;
-            }
-            $flag = $stmt->execute();
-            if ($flag == true) {
-                $this->result = $stmt;
-            }
-        } catch (PDOException $e) {
-            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
-                'sql' => $this->query,
-                'bind values' => $this->bindValues
-            ]);
-        } catch (Error $e) {
-            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
-                'sql' => $this->query,
-                'bind values' => $this->bindValues
-            ]);
+        $stmt = $this->getStmt();
+
+        return $this->run($stmt);
+    }
+
+    private function getStmt($query = null, $bindValues = null)
+    {
+        $query = $query ?? $this->query;
+        $bindValues = $bindValues ?? $this->bindValues;
+        $stmt = $this->con->prepare($query);
+        $index = 1;
+        foreach ((array) $bindValues as $bindValue) {
+            $paramType = gettype($bindValue) == 'integer'
+                ? PDO::PARAM_INT
+                : PDO::PARAM_STR;
+            $stmt->bindValue($index, $bindValue, $paramType);
+            $index++;
         }
 
-        return $flag;
+        return $stmt;
     }
 
     /**
@@ -127,32 +118,27 @@ class PdoDriver extends Database
      */
     public function runQuery(string $sql, array $bindValues = []): bool
     {
+        $stmt = $this->getStmt($sql, $bindValues);
+
+        return $this->run($stmt);
+    }
+
+    /**
+     * Run the given query stament.
+     *
+     * @param \mysqli_stmt|\PDOStatement $stmt
+     *
+     * @return bool
+     */
+    private function run($stmt)
+    {
         $flag = false;
         try {
-            $stmt = $this->con->prepare($sql);
-            $index = 1;
-            foreach ($bindValues as $bindValue) {
-                switch (gettype($bindValue)) {
-                    case 'integer':
-                        $paramType = PDO::PARAM_INT;
-                        break;
-                    default:
-                        $paramType = PDO::PARAM_STR;
-                        break;
-                }
-                $stmt->bindValue($index, $bindValue, $paramType);
-                $index++;
-            }
             $flag = $stmt->execute();
             if ($flag == true) {
                 $this->result = $stmt;
             }
         } catch (PDOException $e) {
-            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
-                'sql' => $this->query,
-                'bind values' => $this->bindValues
-            ]);
-        } catch (Error $e) {
             throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
                 'sql' => $this->query,
                 'bind values' => $this->bindValues

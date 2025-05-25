@@ -3,6 +3,7 @@
 use Database\DatabaseFactory;
 use Database\Driver\MysqliDriver;
 use Database\Exception\DatabaseException;
+use Loader\Config\ConfigLoader;
 use PHPUnit\Framework\TestCase;
 
 class DatabaseFactoryTest extends TestCase
@@ -30,8 +31,38 @@ class DatabaseFactoryTest extends TestCase
                 ['Mysqli']
             )
             ->andReturn($mockDriver);
+        DatabaseFactory::setUpConfig([$config]);
+        $this->assertSame($mockDriver, DatabaseFactory::get());
+    }
 
-        $this->assertSame($mockDriver, DatabaseFactory::create($config));
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testCreateWithError()
+    {
+        $config = [
+            'driver' => 'Mysqli',
+            'host' => 'localhost',
+            'user' => 'root',
+            'password' => '',
+            'database' => 'test_db',
+        ];
+        $mockDriver = Mockery::mock('overload:' . MysqliDriver::class);
+        $mockDriver->shouldReceive('getInstance')
+            ->with(
+                $config['host'],
+                $config['user'],
+                $config['password'],
+                $config['database'],
+                ['Mysqli']
+            )
+            ->andThrow(new Exception('Connection error'));
+        $this->expectException(DatabaseException::class);
+        $this->expectExceptionMessage('Connection error');
+        $this->expectExceptionCode(DatabaseException::DATABASE_CONNECTION_ERROR);
+        DatabaseFactory::setUpConfig([$config]);
+        DatabaseFactory::get();
     }
 
     public function testCreateWithInvalidDriver()
@@ -46,7 +77,8 @@ class DatabaseFactoryTest extends TestCase
             'database' => 'test_db',
         ];
 
-        DatabaseFactory::create($config);
+        DatabaseFactory::setUpConfig([$config]);
+        DatabaseFactory::get();
     }
 
     /**
@@ -65,8 +97,9 @@ class DatabaseFactoryTest extends TestCase
         ]);
         $mockDriver = Mockery::mock('overload:' . MysqliDriver::class)->shouldReceive('getInstance')->andReturn(true);
 
-        DatabaseFactory::setUpConfig(['default' => $mockConfigLoader]);
+        DatabaseFactory::setUpConfig(['default1' => $mockConfigLoader, 'other' => ConfigLoader::getInstance(ConfigLoader::VALUE_LOADER)]);
 
+        $this->assertNotNull(DatabaseFactory::get('default'));
         $this->assertNotNull(DatabaseFactory::get('default'));
     }
 
