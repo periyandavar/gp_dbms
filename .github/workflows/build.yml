@@ -36,7 +36,7 @@ jobs:
 
       - name: Run tests
         run: |
-          composer test
+          ./vendor/bin/phpunit
 
       - name: Generate Version
         id: generate_version
