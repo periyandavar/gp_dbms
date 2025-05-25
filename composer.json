@@ -4,7 +4,7 @@
     "type": "library",
     "require": {
         "php": "^8.1",
-        "gp/loader": "^1.0",
+        "gp/loader": "^2.0.10",
         "gp/validator": "^1.0"
     },
     "license": "MIT",
