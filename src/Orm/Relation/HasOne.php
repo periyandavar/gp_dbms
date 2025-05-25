@@ -2,7 +2,6 @@
 
 namespace Database\Orm\Relation;
 
-use Database\DBQuery;
 use Database\Orm\Model;
 
 class HasOne extends Relation
@@ -10,7 +9,6 @@ class HasOne extends Relation
     public function handle()
     {
         $class = $this->relatedModel;
-        $this->query = $this->query ?? (new DBQuery())->selectAll()->from($class::getTableName());
         $primarykey = $this->primaryKey;
         $this->query->where("{$this->foreignKey} = {$this->model->$primarykey}");
 
@@ -20,6 +18,6 @@ class HasOne extends Relation
          */
         $targetModel = new $class();
 
-        return $targetModel->select($this->query)->one();
+        return $targetModel->select($this->query)->with($this->with_models)->one();
     }
 }

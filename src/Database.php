@@ -12,7 +12,6 @@ use Exception;
  *
  * DBQuery Methods
  * @method Database delete(string $table, array|string|null $where = null)
- * @method Database setTo($args)
  * @method Database update(string $table, array $fields = [], array|string|null $where = null, ?string $join = null)
  * @method Database insert(string $table, array $fields = [], array $funcfields = [])
  * @method Database select($columns)
@@ -63,7 +62,7 @@ abstract class Database
     public function __call($method, $arguments)
     {
         if (method_exists($this->dbQuery, $method)) {
-            // Delegate the method call to the $b instance
+            // Delegate the method call to the $db instance
             $result = call_user_func_array([$this->dbQuery, $method], $arguments);
             if ($result instanceof DBQuery) {
                 return $this;
@@ -203,6 +202,8 @@ abstract class Database
         try {
             $result = $this->executeQuery();
         } catch (Exception $e) {
+            $this->dbQuery->reset();
+
             return false;
         }
         $this->dbQuery->reset();

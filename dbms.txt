@@ -1,0 +1,841 @@
+diff --git a/README.md b/README.md
+index c279543..122c600 100644
+--- a/README.md
++++ b/README.md
+@@ -1,2 +1,235 @@
+-# gp_dbms
+-Simple PHP Database tool with QueryParam class supports mysqli and pdo
++# GP DBMS Library
++
++The GP DBMS Library is a database management system written in PHP. It provides tools for interacting with databases, managing models, querying data, and handling relationships. The library is designed to make database interaction easier and more efficient.
++
++## Table of Contents
++
++- [Requirements](#requirements)
++- [Installation](#installation)
++- [Getting Started](#getting-started)
++- [Features](#features)
++- [File Documentation](#file-documentation)
++- [Usage](#usage)
++- [Example](#example)
++- [Contributing](#contributing)
++- [License](#license)
++- [Contact](#contact)
++- [Author](#author)
++
++---
++
++
++## Requirements
++
++- PHP 7.4 or higher.
++- Composer (optional but recommended for autoloading).
++
++---
++
++
++## Installation
++
++You can install `gp_router` using Composer. Run the following command in your terminal:
++
++```
++composer require gp/router
++```
++---
++
++## Getting Started
++
++After installation, you can start using the package by including the autoloader:
++
++```
++require 'vendor/autoload.php';
++```
++---
++
++# Features
++
++- **Flexible Database Connections**: Supports multiple database drivers like `PDO` and `mysqli`.
++- **Query Builder**: Easily create and execute SQL queries with chaining methods.
++- **Object-Relational Mapping (ORM)**: Map tables to PHP classes for seamless data manipulation.
++- **Relationships**: Handle `HasOne` and `HasMany` relationships with lazy and eager loading.
++- **Lifecycle Events**: Trigger hooks like `onSave`, `onDelete`, and `onUpdate` for models.
++- **Exception Handling**: Provides meaningful error messages through `DatabaseException`.
++- **Transaction Support**: Execute operations within transactions with commit/rollback capabilities.
++- **Extensibility**: Extend models and relationships to customize functionality as needed.
++
++## File Documentation
++
++### **1. Database.php**
++This file contains the core `Database` class responsible for managing database connections and executing queries.
++
++#### Features:
++- Establish database connections.
++- Execute raw SQL queries.
++- Handle transactions (commit/rollback).
++
++---
++
++### **2. DatabaseFactory.php**
++This file contains the `DatabaseFactory` class, which is responsible for creating and managing different database connections.
++
++#### Features:
++- Supports multiple database drivers.
++- Provides a factory method to initialize database connections.
++- Handles configuration for different database environments.
++
++---
++
++### **3. DBQuery.php**
++This file provides a `DBQuery` class that simplifies building and executing SQL queries.
++
++#### Features:
++- Query-building methods (e.g., `select()`, `insert()`, `update()`, `delete()`).
++- Parameterized queries for security.
++- Support for chaining query methods.
++
++---
++
++### **4. Model.php**
++This file contains the `Model` class, which is the base class for all ORM models.
++
++#### Features:
++- Map database tables to PHP classes.
++- Handle CRUD operations (`create`, `read`, `update`, `delete`).
++- Define table relationships (e.g., `hasMany`, `hasOne`).
++
++---
++
++### **5. HasMany.php**
++This file defines the `HasMany` relationship, which represents a one-to-many relationship between models.
++
++#### Features:
++- Fetch related models for a `HasMany` relationship.
++- Lazy loading of related data.
++- Support for eager loading.
++
++---
++
++### **6. HasOne.php**
++This file defines the `HasOne` relationship, which represents a one-to-one relationship between models.
++
++#### Features:
++- Fetch the related model for a `HasOne` relationship.
++- Lazy and eager loading of related data.
++
++---
++
++### **7. Relation.php**
++This file contains the base `Relation` class, which serves as the foundation for all model relationships.
++
++#### Features:
++- Common methods for managing relationships.
++- Base class for `HasMany`, `HasOne`, and other relationships.
++
++---
++
++### **8. MysqliDriver.php**
++This file contains the `MysqliDriver` class, which implements database interaction using the `mysqli` extension.
++
++#### Features:
++- Establish and close connections using `mysqli`.
++- Execute queries and fetch results.
++- Handle prepared statements.
++
++---
++
++### **9. DatabaseException.php**
++This file defines the `DatabaseException` class, which is used to handle database-specific exceptions.
++
++#### Features:
++- Provides meaningful error messages for database operations.
++- Helps in debugging database-related issues.
++
++---
++
++### **10. PdoDriver.php**
++This file contains the `PdoDriver` class, which implements database interaction using the `PDO` extension.
++
++#### Features:
++- Establish and close connections using `PDO`.
++- Execute queries and fetch results.
++- Handle prepared statements for secure queries.
++
++---
++
++### **11. Events.php**
++This file handles database-related events in the ORM layer, such as `onSave`, `onDelete`, and `onUpdate`.
++
++#### Features:
++- Define lifecycle hooks for models.
++- Trigger events during database operations.
++- Allow custom behaviors during specific operations.
++
++---
++
++### Usage
++- Configure your database connection in the `DatabaseFactory.php` file.
++- Create models by extending the `Model.php` class.
++- Use relationships (`HasMany`, `HasOne`) in your models to define associations.
++
++### Example
++
++```
++require_once 'DatabaseFactory.php';
++require_once 'Model.php';
++
++class User extends Model
++{
++    public static function getTableName()
++    {
++      return 'users';
++    }
++
++    public function posts()
++    {
++        return $this->hasMany(Post::class);
++    }
++}
++
++class Post extends Model
++{
++    public static function getTableName()
++    {
++      return 'posts';
++    }
++}
++
++// Fetch a user and their posts
++$user = User::find(1); $posts = $user->posts;
++```
++
++
++
++## Contributing
++
++Contributions are welcome! If you would like to contribute to gp_validator, please follow these steps:
++
++- Fork the repository.
++- Create a new branch (git checkout -b feature/- YourFeature).
++- Make your changes and commit them (git commit -m 'Add some feature').
++- Push to the branch (git push origin feature/YourFeature).
++- Open a pull request.
++- Please ensure that your code adheres to the coding standards and includes appropriate tests.
++
++---
++
++## License
++
++This package is licensed under the MIT License. See the [LICENSE](https://github.com/periyandavar/gp_dbms/blob/main/LICENSE) file for more information.
++
++---
++
++## Contact
++For questions or issues, please reach out to the development team or open a ticket.
++
++---
++
++
++## Author
++
++- Periyandavar [Github](https://github.com/periyandavar) (<vickyperiyandavar@gmail.com>)
++
++---
+\ No newline at end of file
+diff --git a/src/DBQuery.php b/src/DBQuery.php
+index bd81d75..9a41c43 100644
+--- a/src/DBQuery.php
++++ b/src/DBQuery.php
+@@ -2,6 +2,8 @@
+ 
+ namespace Database;
+ 
++use InvalidArgumentException;
++
+ /**
+  * Super class for all DBQuery. All drivers should extend this DBQuery
+  * DBQuery class consists of basic level functions for various purposes and
+@@ -132,12 +134,12 @@ class DBQuery
+             if (is_array($where)) {
+                 [$where, $this->bindValues] = $this->frameWhere($where);
+             }
+-            $this->_where = " WHERE $where";
++            $this->_where = " $where";
+         }
+ 
+         return $this;
+     }
+-
++    
+     /**
+      * Set the values in update query
+      *
+@@ -146,7 +148,7 @@ class DBQuery
+     public function setTo(...$args): DBQuery
+     {
+         $change = implode(',', $args);
+-        // $this->_sql .= Utility::endsWith($this->_sql, 'SET ') ? '' : ',';
++
+         $this->_sql .= $change;
+ 
+         return $this;
+@@ -172,33 +174,50 @@ class DBQuery
+         ?string $join = null
+     ): DBQuery {
+         $this->_resetQuery();
+-        $set = '';
+-        $index = 1;
+-        foreach ($fields as $column => $field) {
++    
++        // Ensure table and join are properly sanitized
++        $table = trim($table);
++        $join = $join ? trim($join) : '';
++    
++        // Construct the SET clause
++        $setClauses = [];
++        foreach ($fields as $column => $value) {
+             $column = trim($column);
++    
++            // Handle dot notation for column names
+             if (strpos($column, '.')) {
+-                $column = explode('.', $column);
+-                $column = $column[0] . '`.`' . $column[1];
+-            }
+-            $set .= "`$column` = ?";
+-            $this->bindValues[] = $field;
+-            if ($index < count($fields)) {
+-                $set .= ', ';
++                $parts = explode('.', $column);
++                $column = "`{$parts[0]}`.`{$parts[1]}`";
++            } else {
++                $column = "`$column`";
+             }
+-            $index++;
++    
++            $setClauses[] = "$column = ?";
++            $this->bindValues[] = $value;
+         }
+-        $this->_sql = "UPDATE $table " . $join . ' SET ' . $set;
+-        if (isset($where)) {
++    
++        $set = implode(', ', $setClauses);
++        $this->_sql = "UPDATE `$table` $join SET $set";
++    
++        // Handle WHERE clause
++        if (!empty($where)) {
+             if (is_array($where)) {
+-                [$where, $bindValues] = $this->frameWhere($where);
++                [$whereClause, $bindValues] = $this->frameWhere($where);
++                $this->_where = "  $whereClause";
+                 $this->bindValues = array_merge($this->bindValues, $bindValues);
++            } else {
++                $this->_where = "  $where";
+             }
+-            $this->_where = " WHERE $where";
+         }
+-
++    
++        // Append WHERE clause to SQL if exists
++        // if (isset($this->_where)) {
++        //     $this->_sql .= $this->_where;
++        // }
++    
+         return $this;
+     }
+-
++    
+     public function frameWhere($data, $condition = 'AND')
+     {
+         $result = [];
+@@ -229,39 +248,31 @@ class DBQuery
+         array $funcfields = []
+     ): DBQuery {
+         $this->_resetQuery();
+-        $keys = '';
+-        if (count($fields) > 0) {
+-            $keys = implode('`, `', array_keys($fields));
+-        }
+-        $values = '';
+-        $index = 1;
+-        foreach ($fields as $column => $value) {
+-            $values .= '?';
+-            $this->bindValues[] = $value;
+-            if ($index < count($fields)) {
+-                $values .= ',';
+-            }
+-            $index++;
+-        }
+-        $values = ($values != '' && count($funcfields) > 0)
+-            ? $values . ', '
+-            : $values;
+-        $index = 1;
++    
++        // Prepare the keys and values for the `fields` array
++        $keys = implode('`, `', array_keys($fields));
++        $values = implode(', ', array_fill(0, count($fields), '?'));
++        $this->bindValues = array_values($fields);
++    
++        // Prepare the keys and values for the `funcfields` array
+         foreach ($funcfields as $column => $value) {
+-            $values .= "($value)";
+-            $keys = $keys != ''
+-                ? $keys . '`, `' . $column
+-                : $column;
+-            if ($index < count($funcfields)) {
+-                $values .= ',';
++            if (!empty($keys)) {
++                $keys .= '`, `';
++            }
++            $keys .= $column;
++    
++            if (!empty($values)) {
++                $values .= ', ';
+             }
+-            $index++;
++            $values .= "($value)";
+         }
+-        $this->_sql = "INSERT INTO $table (`$keys`) VALUES ({$values})";
+-
++    
++        // Construct the SQL query
++        $this->_sql = "INSERT INTO $table (`$keys`) VALUES ($values)";
++    
+         return $this;
+     }
+-
++    
+     /**
+      * This function used to build select query
+      * we can call this in following way
+@@ -272,33 +283,34 @@ class DBQuery
+     public function select(...$columns): DBQuery
+     {
+         $this->_resetQuery();
+-        for ($i = 0; $i < count($columns); $i++) {
+-            $columns[$i] = trim($columns[$i]);
+-            if (strpos($columns[$i], ' ') && strpos($columns[$i], '.')) {
+-                $columns[$i] = explode(' ', $columns[$i]);
+-                $columns[$i][0] = explode('.', $columns[$i][0]);
+-                $columns[$i] = '`'
+-                    . $columns[$i][0][0]
+-                    . '` .`'
+-                    . $columns[$i][0][1]
+-                    . '` '
+-                    . $columns[$i][1];
+-            } elseif (strpos($columns[$i], ' ')) {
+-                $columns[$i] = explode(' ', $columns[$i]);
+-                $columns[$i] = '`' . $columns[$i][0] . '` ' . $columns[$i][1];
+-            } elseif (strpos($columns[$i], '.')) {
+-                $columns[$i] = explode('.', $columns[$i]);
+-                $columns[$i] = '`' . $columns[$i][0] . '`.`' . $columns[$i][1] . '`';
+-            } else {
+-                $columns[$i] = '`' . $columns[$i] . '`';
++    
++        $processedColumns = array_map(function($column) {
++            $column = trim($column);
++    
++            if (strpos($column, ' ') && strpos($column, '.')) {
++                [$tableColumn, $alias] = explode(' ', $column);
++                [$table, $col] = explode('.', $tableColumn);
++                return "`$table`.`$col` $alias";
++            } 
++            
++            if (strpos($column, ' ')) {
++                [$col, $alias] = explode(' ', $column);
++                return "`$col` $alias";
++            } 
++            
++            if (strpos($column, '.')) {
++                [$table, $col] = explode('.', $column);
++                return "`$table`.`$col`";
+             }
+-        }
+-        $columns = implode(', ', $columns);
+-        $this->_columns .= "$columns";
+-
++    
++            return "`$column`";
++        }, $columns);
++    
++        $this->_columns .= implode(', ', $processedColumns);
++    
+         return $this;
+     }
+-    /**
++        /**
+      * SelectAs used to add select fields with as value
+      * call this function by
+      * selectAs(['field1' => 'as1', 'field2' => 'as2'])
+@@ -353,13 +365,17 @@ class DBQuery
+      * Appends the string to the where condition
+      *
+      * @param string $where Where condition string
++     * @param string $condition condtion to be used to concat.
+      *
+      * @return DBQuery
+      */
+-    public function appendWhere(string $where): DBQuery
++    public function appendWhere(string $where, string $condition = ''): DBQuery
+     {
+-        $this->_where = $this->_where == null ? '' : $this->_where;
+-        $this->_where .= $where;
++        if ($this->_where === null) {
++            $condition = '';
++            $this->_where = '';
++        }
++        $this->_where .= ' ' . $condition . ' ' . $where;
+ 
+         return $this;
+     }
+@@ -374,6 +390,37 @@ class DBQuery
+         return $this->_where;
+     }
+ 
++    public function addWhere(string $type, ...$args): DBQuery
++    {
++        if (is_null($this->_where)) {
++            $this->_where = " $type ";
++        } else {
++            $this->_where .= ' AND ';
++        }
++
++        $count = count($args);
++    
++        switch ($count) {
++            case 1:
++                $this->processSingleArgument($args[0]);
++                break;
++    
++            case 2:
++                $this->_where .= $args[0];
++                $this->bindValues[] = $args[1];
++                break;
++    
++            case 3:
++                $this->processThreeArguments($args[0], $args[1], $args[2]);
++                break;
++    
++            default:
++                throw new InvalidArgumentException("Invalid number of arguments passed to 'where' method.");
++        }
++    
++        return $this;
++    }
++
+     /**
+      * This function to add where condition with AND
+      * we can use this in there ways
+@@ -391,67 +438,61 @@ class DBQuery
+      *
+      * @return DBQuery
+      */
+-    public function where(...$args): DBQuery
++    public function where(array|string ...$args): DBQuery
+     {
+-        if ($this->_where == null) {
+-            $this->_where .= ' WHERE ';
+-        } else {
+-            $this->_where .= ' AND ';
+-        }
+-        $count = count($args);
+-
+-        if ($count == 1) {
+-            $arg = $args[0];
+-
+-            if (is_array($arg)) {
+-                $keys = array_keys($arg);
+-                if (array_keys($keys) !== $keys) {
+-                    [$this->_where, $bindValues] = $this->frameWhere($arg);
+-                    $this->bindValues = array_merge($this->bindValues, $bindValues);
+-
+-                    return $this;
+-                }
+-
+-                $index = 1;
+-
+-                foreach ($arg as $param) {
+-                    if ($index != 1) {
+-                        $this->_where .= ' AND ';
+-                    }
+-                    $param = (array) $param;
+-                    $parmCount = count($param);
+-                    if ($parmCount == 1) {
+-                        $this->_where .= $param;
+-                    } elseif ($parmCount == 2) {
+-                        $this->_where .= $param[0];
+-                        $this->bindValues[] = $param[1];
+-                    } elseif ($parmCount == 3) {
+-                        $this->_where .= '`'
+-                            . trim($param[0])
+-                            . '`'
+-                            . $param[1]
+-                            . ' ?';
+-                        $this->bindValues[] = $param[2];
+-                    }
+-                    $index++;
+-                }
+-            } else {
+-                $this->_where .= $arg;
++        return $this->addWhere('AND', ...$args);
++    }
++    
++    private function processSingleArgument($arg): void
++    {
++        if (is_array($arg)) {
++            $keys = array_keys($arg);
++            if (array_keys($keys) !== $keys) {
++                [$this->_where, $bindValues] = $this->frameWhere($arg);
++                $this->bindValues = array_merge($this->bindValues, $bindValues);
++                return;
+             }
+-        } elseif ($count == 2) {
+-            $this->_where .= $args[0];
+-            $this->bindValues[] = $args[1];
+-        } elseif ($count == 3) {
+-            $field = trim($args[0]);
+-            if (strpos($field, '.')) {
+-                $field = explode('.', $field);
+-                $field = $field[0] . '`.`' . $field[1];
++    
++            foreach ($arg as $index => $param) {
++                if ($index !== 0) {
++                    $this->_where .= ' AND ';
++                }
++                $this->appendCondition((array) $param);
+             }
+-            $this->_where .= '`' . $field . '`' . $args[1] . ' ?';
+-            $this->bindValues[] = $args[2];
++        } else {
++            $this->_where .= $arg;
++        }
++    }
++    
++    private function processThreeArguments(string $field, string $operator, mixed $value): void
++    {
++        $field = trim($field);
++        if (strpos($field, '.') !== false) {
++            [$table, $column] = explode('.', $field, 2);
++            $field = "`{$table}`.`{$column}`";
++        } else {
++            $field = "`{$field}`";
++        }
++    
++        $this->_where .= "{$field} {$operator} ?";
++        $this->bindValues[] = $value;
++    }
++    
++    private function appendCondition(array $param): void
++    {
++        $count = count($param);
++    
++        if ($count === 1) {
++            $this->_where .= $param[0];
++        } elseif ($count === 2) {
++            $this->_where .= $param[0];
++            $this->bindValues[] = $param[1];
++        } elseif ($count === 3) {
++            $this->_where .= "`" . trim($param[0]) . "` {$param[1]} ?";
++            $this->bindValues[] = $param[2];
++        } else {
++            throw new InvalidArgumentException("Invalid condition format.");
+         }
+-
+-        return $this;
+     }
+     /**
+      * This function to add where condition with OR
+@@ -472,54 +513,7 @@ class DBQuery
+      */
+     public function orWhere(...$args): DBQuery
+     {
+-        if ($this->_where == null) {
+-            $this->_where .= ' WHERE ';
+-        } else {
+-            $this->_where .= ' OR ';
+-        }
+-        $count = count($args);
+-
+-        if ($count == 1) {
+-            $arg = $args[0];
+-
+-            if (is_array($arg)) {
+-                $index = 1;
+-
+-                foreach ($arg as $param) {
+-                    if ($index !== 1) {
+-                        $this->_where .= ' OR ';
+-                    }
+-                    $parmCount = count($param);
+-                    if ($parmCount == 1) {
+-                        $this->_where .= $param;
+-                    } elseif ($parmCount == 2) {
+-                        $this->_where .= $param[0];
+-                        $this->bindValues[] = $param[1];
+-                    } elseif ($parmCount == 3) {
+-                        $this->_where .= '`' . trim($param[0]) . '`'
+-                             . $param[1]
+-                             . ' ?';
+-                        $this->bindValues[] = $param[2];
+-                    }
+-                    $index++;
+-                }
+-            } else {
+-                $this->_where .= $arg;
+-            }
+-        } elseif ($count == 2) {
+-            $this->_where .= $args[0];
+-            $this->bindValues[] = $args[1];
+-        } elseif ($count == 3) {
+-            $field = trim($args[0]);
+-            if (strpos($field, '.')) {
+-                $field = explode('.', $field);
+-                $field = $field[0] . '`.`' . $field[1];
+-            }
+-            $this->_where .= '`' . $field . '`' . $args[1] . ' ?';
+-            $this->bindValues[] = $args[2];
+-        }
+-
+-        return $this;
++        return $this->addWhere('OR', ...$args);
+     }
+ 
+     /**
+@@ -599,7 +593,7 @@ class DBQuery
+ 
+         return $query;
+     }
+-
++    
+     /**
+      * Returns bindValues
+      *
+@@ -771,7 +765,7 @@ class DBQuery
+                 . ' FROM '
+                 . $this->_table
+                 . $this->_join
+-                . $this->_where
++                . ($this->_where === null ? '' : ' WHERE '. $this->_where)
+                 . $this->_groupby
+                 . $this->_having
+                 . $this->_orderby
+@@ -779,6 +773,7 @@ class DBQuery
+         } else {
+             $this->query = $this->_sql . $this->_where;
+         }
++        // var_export($this->query);exit;
+ 
+         return $this->query;
+     }
+diff --git a/src/Database.php b/src/Database.php
+index e793dae..861de9e 100644
+--- a/src/Database.php
++++ b/src/Database.php
+@@ -4,6 +4,7 @@ namespace Database;
+ 
+ use Database\Exception\DatabaseException;
+ use Exception;
++use Logger\Log;
+ 
+ /**
+  * Super class for all Database. All drivers should extend this Database
+@@ -200,6 +201,7 @@ abstract class Database
+         $this->query = $this->dbQuery->getSQL();
+         $this->bindValues = $this->dbQuery->getBindValues();
+ 
++        Log::getInstance()->info("execute db query: ", [$this->query, $this->bindValues]);
+         try {
+             $result = $this->executeQuery();
+         } catch (Exception $e) {
+diff --git a/src/Orm/Model.php b/src/Orm/Model.php
+index 2c7d397..cbcdba3 100644
+--- a/src/Orm/Model.php
++++ b/src/Orm/Model.php
+@@ -197,7 +197,6 @@ abstract class Model
+     public static function getTableName()
+     {
+         return basename(str_replace('\\', '/', static::class));
+-        // return class_basename(static::class);
+     }
+ 
+     /**
+@@ -341,7 +340,7 @@ abstract class Model
+             }));
+         }, $updatedModels);
+     }
+-
++    
+     /**
+      * Load the model from the database row.
+      *
+@@ -439,9 +438,7 @@ abstract class Model
+     public function one()
+     {
+         $db = static::getDb();
+-        // if (! $this->dbQuery) {
+-        //     $this->dbQuery =
+-        // }
++
+         $result = $db->setDbQuery($this->dbQuery)->getOne();
+         if (! $result) {
+             return null;
+diff --git a/src/Orm/Relation/HasMany.php b/src/Orm/Relation/HasMany.php
+index 090e51b..f153dd9 100644
+--- a/src/Orm/Relation/HasMany.php
++++ b/src/Orm/Relation/HasMany.php
+@@ -9,6 +9,7 @@ class HasMany extends Relation
+ {
+     public function handle()
+     {
++        // Get the related model class
+         $class = $this->relatedModel;
+         $this->query = $this->query ?? (new DBQuery())->selectAll()->from($class::getTableName());
+         $primarykey = $this->primaryKey;
+diff --git a/src/Orm/Relation/Relation.php b/src/Orm/Relation/Relation.php
+index 65b6813..1f84cb0 100644
+--- a/src/Orm/Relation/Relation.php
++++ b/src/Orm/Relation/Relation.php
+@@ -23,23 +23,6 @@ abstract class Relation
+         $this->query = $query;
+     }
+ 
+-    // public function hasMany($id)
+-    // {
+-    //     $query = $this->query ?? new DBQuery();
+-    //     $query->where([$this->foreignKey = $this->model->$id]);
+-
+-    //     if (! get_parent_class($this->relatedModel) == Model::class) {
+-    //         return [];
+-    //     }
+-
+-    //     /**
+-    //      * @var Model
+-    //      */
+-    //     $targetModel = new ${$this->relatedModel}();
+-
+-    //     return $targetModel->select($this->query)->all();
+-    // }
+-
+     abstract public function handle();
+ 
+     public function reload()
+diff --git a/tests/DBQueryTest.php b/tests/DBQueryTest.php
+index e55af6e..e94d84e 100644
+--- a/tests/DBQueryTest.php
++++ b/tests/DBQueryTest.php
+@@ -33,7 +33,7 @@ class DBQueryTest extends TestCase
+         $query = $dbQuery->update('users', ['name' => 'John'], 'id = 1')->getQuery();
+ 
+         $this->assertEquals(
+-            'UPDATE users  SET `name` = ? WHERE id = 1',
++            'UPDATE `users`  SET `name` = ? WHERE id = 1',
+             $query
+         );
+     }
+@@ -44,7 +44,7 @@ class DBQueryTest extends TestCase
+         $query = $dbQuery->insert('users', ['name' => 'John', 'email' => 'john@example.com'])->getQuery();
+ 
+         $this->assertEquals(
+-            'INSERT INTO users (`name`, `email`) VALUES (?,?)',
++            'INSERT INTO users (`name`, `email`) VALUES (?, ?)',
+             $query
+         );
+     }

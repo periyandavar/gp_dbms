@@ -7,6 +7,7 @@ use Database\Exception\DatabaseException;
 use Database\Orm\Relation\HasMany;
 use Database\Orm\Relation\HasOne;
 use Database\Orm\Relation\Relation;
+use JsonSerializable;
 use Loader\Container;
 use Validator\Field\Field;
 use Validator\Field\Fields;
@@ -14,7 +15,7 @@ use Validator\Field\Fields;
 /**
  *
  */
-abstract class Model
+abstract class Model implements JsonSerializable
 {
     /**
      * Original state of the model, will have the db row results.
@@ -197,7 +198,6 @@ abstract class Model
     public static function getTableName()
     {
         return basename(str_replace('\\', '/', static::class));
-        // return class_basename(static::class);
     }
 
     /**
@@ -276,24 +276,30 @@ abstract class Model
         }
 
         $withModels = $ref->getWithModels();
-        foreach ($withModels as $with) {
-            if (method_exists($ref, $with)) {
-                $ref->$with();
-            }
-        }
 
-        $relations = $ref->getRelations();
-
-        if (empty($withModels) || empty($relations)) {
+        if (empty($withModels)) {
             return $updatedModels;
         }
 
         foreach ($withModels as $with) {
-            $relation = $relations[$with];
-            if (isset($relation)) {
-                self::handleRelation($relation, $updatedModels, $with);
+            if (method_exists($ref, $with)) {
+                // $ref->$with = $ref->$with()->handle();
+                self::handleRelation($ref->$with(), $updatedModels, $with);
             }
         }
+
+        // $relations = $ref->getRelations();
+
+        // if (empty($withModels) || empty($relations)) {
+        //     return $updatedModels;
+        // }
+
+        // foreach ($withModels as $with) {
+        //     $relation = $relations[$with];
+        //     if (isset($relation)) {
+        //         self::handleRelation($relation, $updatedModels, $with);
+        //     }
+        // }
 
         return $updatedModels;
     }
@@ -321,24 +327,26 @@ abstract class Model
         $fkValues = implode(',', $fkValues);
         $relationClass = $relation->getRelatedModel();
 
-        $dbQuery = (new DBQuery())->selectAll()->from($relationClass::getTableName())->where(" {$key2} IN ($fkValues) ");
+        $dbQuery = $relation->getQuery()->where(" {$key2} IN ($fkValues) ");
         $result = false;
-        if ($relation instanceof HasOne) {
-            $result = (new $relationClass())->setDbQuery($dbQuery)->one();
-        }
+        $result = (new $relationClass())->setDbQuery($dbQuery)->with($relation->getWithModels())->all();
+        // if ($relation instanceof HasOne) {
+        //     ;
+        // }
 
-        if ($relation instanceof HasMany) {
-            $result = (new $relationClass())->setDbQuery($dbQuery)->all();
-        }
+        // if ($relation instanceof HasMany) {
+        //     $result = (new $relationClass())->setDbQuery($dbQuery)->with($relation->getWithModels())->all();
+        // }
 
         if (! $result) {
             return $updatedModels;
         }
 
-        return array_map(function($model) use ($result, $with, $key1, $key2) {
-            $model->$with = array_values(array_filter($result, function($m) use ($key2, $key1, $model) {
+        return array_map(function($model) use ($result, $with, $key1, $key2, $isHasMany) {
+            $res = array_values(array_filter($result, function($m) use ($key2, $key1, $model) {
                 return $model->$key1 === $m->$key2;
             }));
+            $model->$with = $isHasMany ? $res : reset($res);
         }, $updatedModels);
     }
 
@@ -371,19 +379,13 @@ abstract class Model
      *
      * @return Model
      */
-    public static function fromDbRow($_data)
+    public function fromDbRow(array $_data)
     {
-        $calledClass = get_called_class();
-        /**
-         * @var Model
-         */
-        $model = new $calledClass();
-
         foreach ($_data as $key => $value) {
-            $model->$key = $value;
+            $this->$key = $value;
         }
 
-        return $model;
+        return $this;
     }
 
     /**
@@ -425,6 +427,9 @@ abstract class Model
         return $result;
     }
 
+    /**
+     * @return static
+     */
     public static function select(?DBQuery $query = null)
     {
         $calledClass = get_called_class();
@@ -439,15 +444,15 @@ abstract class Model
     public function one()
     {
         $db = static::getDb();
-        // if (! $this->dbQuery) {
-        //     $this->dbQuery =
-        // }
+
         $result = $db->setDbQuery($this->dbQuery)->getOne();
         if (! $result) {
             return null;
         }
         $model = self::getModel($result);
         $model->setIsLoadedByOrm(true);
+
+        self::loadWith([$model], $this);
 
         return $model;
     }
@@ -625,14 +630,10 @@ abstract class Model
     public function __get($name)
     {
         if (method_exists($this, $name)) {
-            $this->$name();
-            if (isset($this->relations[$name])) {
-                $relation = $this->relations[$name];
-                $this->$name = $relation->handle();
-            }
+            $this->relations[$name] = $this->$name()->handle();
         }
 
-        return $this->attr[$name] ?? null;
+        return $this->attr[$name] ?? $this->relations[$name] ?? null;
     }
 
     public function getRelation($name)
@@ -647,6 +648,12 @@ abstract class Model
 
     public function __set($name, $value)
     {
+        if (method_exists($this, $name)) {
+            $this->relations[$name] = $value;
+
+            return;
+        }
+
         $this->attr[$name] = $value;
     }
 
@@ -666,31 +673,46 @@ abstract class Model
         }
     }
 
+    /**
+     * Define a one-to-one relationship.
+     *
+     * @param string       $relatedModelClass
+     * @param string       $foreignKey
+     * @param string       $primaryKey
+     * @param DBQuery|null $query
+     *
+     * @return HasOne
+     */
     public function hasOne(string $relatedModelClass, string $foreignKey, string $primaryKey, ?DBQuery $query = null)
     {
         $backtrace = debug_backtrace();
         $name = $backtrace[1]['function'] ?? null;
-        if (! isset($name)) {
-            return null;
-        }
 
         $hasOne = new HasOne($this, $primaryKey, $relatedModelClass, $foreignKey, $query);
         $this->relations[$name] = $hasOne;
 
-        return $hasOne->handle();
+        return $hasOne;
     }
 
+    /**
+     * Define a one-to-many relationship.
+     *
+     * @param string       $relatedModelClass
+     * @param string       $foreignKey
+     * @param string       $primaryKey
+     * @param DBQuery|null $query
+     *
+     * @return HasMany
+     */
     public function hasMany(string $relatedModelClass, string $foreignKey, string $primaryKey, ?DBQuery $query = null)
     {
         $hasMany = new HasMany($this, $primaryKey, $relatedModelClass, $foreignKey, $query);
         $backtrace = debug_backtrace();
         $name = $backtrace[1]['function'] ?? null;
-        if (! isset($name)) {
-            return null;
-        }
+
         $this->relations[$name] = $hasMany;
 
-        return $hasMany->handle();
+        return $hasMany;
     }
 
     /**
@@ -782,5 +804,40 @@ abstract class Model
     public function useDelete()
     {
         return [];
+    }
+
+    public function jsonSerialize(): array
+    {
+        $data = $this->toResponse();
+
+        // var_export($data);exit;
+        // var_export(['iiii' => array_keys($data)]);
+        $data = $this->serialize($data);
+        // var_export($data);exit;
+
+        return $data;
+    }
+
+    public function serialize(array $data)
+    {
+        // var_export(['kyes' => array_keys($data)]);
+        foreach ($data as $key => $value) {
+            // var_export(['sssss::'.$key=>[static::class => [$key, $value]]]);
+            if ($value instanceof Model) {
+                $data[$key] = $this->serialize($value->toResponse());
+            }
+            if (is_array($value)) {
+                $data[$key] = $this->serialize($value);
+            }
+        }
+
+        // var_export([static::class => $data]);exit;
+
+        return $data;
+    }
+
+    public function toResponse()
+    {
+        return array_merge($this->toDbRow(), $this->relations);
     }
 }
