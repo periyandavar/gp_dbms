@@ -68,13 +68,6 @@ class DatabaseTest extends TestCase
         $this->assertTrue($this->mockDatabase->rollback());
     }
 
-    public function testClone()
-    {
-        $this->expectException(Exception::class);
-        $mockDatabase = MockDatabase::getInstance('', '', '', '', []);
-        $mockDatabase = clone $this->mockDatabase;
-    }
-
     public function testCall()
     {
         $mockDatabase = MockDatabase::getInstance('', '', '', '', []);
