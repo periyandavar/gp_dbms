@@ -4,7 +4,6 @@ namespace Database\Driver;
 
 use Database\Database;
 use Database\Exception\DatabaseException;
-use Error;
 use Pdo;
 use PdoException;
 
@@ -140,11 +139,6 @@ class PdoDriver extends Database
                 $this->result = $stmt;
             }
         } catch (PDOException $e) {
-            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
-                'sql' => $this->query,
-                'bind values' => $this->bindValues
-            ]);
-        } catch (Error $e) {
             throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
                 'sql' => $this->query,
                 'bind values' => $this->bindValues

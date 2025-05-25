@@ -45,7 +45,7 @@ class DatabaseFactory
     /**
      * Set up config
      *
-     * @param ConfigLoader[] $config
+     * @param array[]|ConfigLoader[] $configs
      */
     public static function setUpConfig(array $configs)
     {

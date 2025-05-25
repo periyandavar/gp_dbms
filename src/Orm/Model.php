@@ -327,16 +327,9 @@ abstract class Model implements JsonSerializable
         $fkValues = implode(',', $fkValues);
         $relationClass = $relation->getRelatedModel();
 
-        $dbQuery = $relation->getQuery()->where(" {$key2} IN ($fkValues) ");
+        $dbQuery = $relation->getDbQuery()->where(" {$key2} IN ($fkValues) ");
         $result = false;
         $result = (new $relationClass())->setDbQuery($dbQuery)->with($relation->getWithModels())->all();
-        // if ($relation instanceof HasOne) {
-        //     ;
-        // }
-
-        // if ($relation instanceof HasMany) {
-        //     $result = (new $relationClass())->setDbQuery($dbQuery)->with($relation->getWithModels())->all();
-        // }
 
         if (! $result) {
             return $updatedModels;

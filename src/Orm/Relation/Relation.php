@@ -2,6 +2,7 @@
 
 namespace Database\Orm\Relation;
 
+use Database\Database;
 use Database\DBQuery;
 use Database\Orm\Model;
 
@@ -30,7 +31,6 @@ use Database\Orm\Model;
  * @method Database limit(int $limit, ?int $offset = 0)
  * @method Database orderBy(string $fieldName, string $order)
  * @method string   getExectedQuery()
- * @method string   getQuery()
  * @method array    getBindValues()
  * @method Database appendBindValues(array $values)
  * @method Database innerJoin(string $tableName)
@@ -41,7 +41,7 @@ use Database\Orm\Model;
  * @method Database using(string $field)
  * @method Database groupBy($fields)
  * @method          setBindValue($values)
- * @method          setQuery($query)
+ * @method          setDbQuery($query)
  * @method          getSql()
  * @method Database reset()
  *
@@ -177,7 +177,7 @@ abstract class Relation
      *
      * @return DBQuery
      */
-    public function getQuery(): DBQuery
+    public function getDbQuery(): DBQuery
     {
         return $this->query;
     }
@@ -189,7 +189,7 @@ abstract class Relation
      *
      * @return self
      */
-    public function setQuery(DBQuery $query): self
+    public function setDbQuery(DBQuery $query): self
     {
         $this->query = $query;
 
