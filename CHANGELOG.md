@@ -2,7 +2,15 @@
 
 ## [Unreleased](https://github.com/periyandavar/gp_dbms/tree/HEAD)
 
-[Full Changelog](https://github.com/periyandavar/gp_dbms/compare/v1.0.3...HEAD)
+[Full Changelog](https://github.com/periyandavar/gp_dbms/compare/1.0.4...HEAD)
+
+**Merged pull requests:**
+
+- feat:  update loader [\#9](https://github.com/periyandavar/gp_dbms/pull/9) ([periyandavar](https://github.com/periyandavar))
+
+## [1.0.4](https://github.com/periyandavar/gp_dbms/tree/1.0.4) (2025-05-25)
+
+[Full Changelog](https://github.com/periyandavar/gp_dbms/compare/v1.0.3...1.0.4)
 
 **Merged pull requests:**
 
