@@ -1,0 +1,110 @@
+name: Build and Release Loader
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+  workflow_dispatch:
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history and tags
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, zip
+
+      - name: Suppress deprecation warnings
+        run: |
+          echo "error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);" > suppress_deprecations.php
+          php -f suppress_deprecations.php
+
+      - name: Install dependencies
+        run: |
+          composer install
+
+      - name: Run tests
+        run: |
+          ./vendor/bin/phpunit
+
+      - name: Generate Version
+        id: generate_version
+        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+
+      - name: Generate changelog
+        id: changelog
+        uses: janheinrichmerker/action-github-changelog-generator@v2.4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Changelog
+        id: changelog_updater
+        uses: stefanzweifel/changelog-updater-action@v1
+        with:
+          latest-version: ${{ env.VERSION }}
+          release-notes: ${{ github.event.release.body }}
+          path-to-changelog: "CHANGELOG.md"
+
+      - name: Commit updated CHANGELOG
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          branch: main
+          commit_message: 'Update CHANGELOG.md'
+          file_pattern: CHANGELOG.md
+  release:
+    needs: changelog
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+
+    outputs:
+      tag_name: ${{ steps.tag.outputs.tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history and tags
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, intl, zip
+
+      - name: Install dependencies
+        run: |
+          composer install --no-dev
+
+      - name: Create Git Tag
+        id: tag
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.0")
+          VERSION=$(npx semver $VERSION -i patch)
+          echo "VERSION=$VERSION"
+          git tag $VERSION
+          git push origin $VERSION
+          echo "::set-output name=tag::$VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Debug Tag Output
+        run: echo "Tag- ${{ steps.tag.outputs.tag }}"
+
+      - name: Trigger Release Workflow
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/release.yml/dispatches \
+            -d "{\"ref\": \"refs/tags/${{ steps.tag.outputs.tag }}\"}"

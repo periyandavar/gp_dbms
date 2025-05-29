@@ -69,24 +69,7 @@ class MysqliDriver extends Database
     {
         $flag = false;
         try {
-            $stmt = $this->con->prepare($this->query);
-            $paramType = '';
-
-            foreach ($this->bindValues as $bindValue) {
-                switch (gettype($bindValue)) {
-                    case 'integer':
-                        $paramType .= 'i';
-                        break;
-                    case 'double':
-                        $paramType .= 'd';
-                        break;
-                    default:
-                        $paramType .= 's';
-                        break;
-                }
-            }
-            $stmt->bind_param($paramType, ...$this->bindValues);
-
+            $stmt = $this->getStmt();
             $flag = $stmt->execute();
             if ($flag) {
                 $result = $stmt->get_result();
@@ -105,6 +88,33 @@ class MysqliDriver extends Database
         }
 
         return $flag;
+    }
+
+    private function getStmt($query = null, $bindValues = null)
+    {
+        $query = $query ?? $this->query;
+        $bindValues = $bindValues ?? $this->bindValues;
+        $stmt = $this->con->prepare($query);
+        $paramType = '';
+        foreach ($bindValues as $bindValue) {
+            switch (gettype($bindValue)) {
+                case 'integer':
+                    $paramType .= 'i';
+                    break;
+                case 'double':
+                    $paramType .= 'd';
+                    break;
+                default:
+                    $paramType .= 's';
+                    break;
+            }
+        }
+
+        if (count($bindValues) != 0) {
+            $stmt->bind_param($paramType, ...$bindValues);
+        }
+
+        return $stmt;
     }
 
     /**
@@ -129,24 +139,7 @@ class MysqliDriver extends Database
     {
         $flag = false;
         try {
-            $stmt = $this->con->prepare($sql);
-            $paramType = '';
-            foreach ($bindValues as $bindValue) {
-                switch (gettype($bindValue)) {
-                    case 'integer':
-                        $paramType .= 'i';
-                        break;
-                    case 'double':
-                        $paramType .= 'd';
-                        break;
-                    default:
-                        $paramType .= 's';
-                        break;
-                }
-            }
-            if (count($bindValues) != 0) {
-                $stmt->bind_param($paramType, ...$bindValues);
-            }
+            $stmt = $this->getStmt($sql, $bindValues);
             $flag = $stmt->execute();
             if ($flag == true) {
                 $result = $stmt->get_result();

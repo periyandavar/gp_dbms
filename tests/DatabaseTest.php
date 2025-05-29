@@ -41,6 +41,20 @@ class DatabaseTest extends TestCase
         $this->assertTrue($result);
     }
 
+    public function testExecuteWithError()
+    {
+        $mockDbQuery = $this->createMock(DBQuery::class);
+        $this->mockDatabase->method('executeQuery')->willThrowException(new Exception('Execution error'));
+        $mockDbQuery->method('getSQL')->willReturn('SELECT * FROM users');
+        $mockDbQuery->method('getBindValues')->willReturn([]);
+        $mockDbQuery->expects($this->once())->method('reset');
+
+        $this->mockDatabase->setDbQuery($mockDbQuery);
+
+        $result = $this->mockDatabase->execute();
+        $this->assertFalse($result);
+    }
+
     public function testSet()
     {
         $result = $this->mockDatabase->set('autocommit', '0');
@@ -52,6 +66,13 @@ class DatabaseTest extends TestCase
         $this->assertTrue($this->mockDatabase->begin());
         $this->assertTrue($this->mockDatabase->commit());
         $this->assertTrue($this->mockDatabase->rollback());
+    }
+
+    public function testCall()
+    {
+        $mockDatabase = MockDatabase::getInstance('', '', '', '', []);
+        $mockDatabase->select('id', 'name')->from('users');
+        $this->assertSame($mockDatabase->getQuery(), 'SELECT `id`, `name` FROM `users`');
     }
 
     public function testGetOne()
@@ -71,20 +92,62 @@ class DatabaseTest extends TestCase
             false
         );
 
-        // $mockDatabase = Mockery::mock(Database::class)->makePartial();
-        // // $mockDatabase->shouldReceive('fetch')->andReturnValues([(object) ['id' => 1, 'name' => 'Test1'],
-        // (object) ['id' => 2, 'name' => 'Test2'],
-        // false]);
-
         $result = $this->mockDatabase->getAll();
         $this->assertCount(2, $result);
         $this->assertEquals('Test1', $result[0]->name);
-        // $this->assertEquals('Test2', $result[1]->name);
     }
 
     public function testEscape()
     {
         $escapedValue = $this->mockDatabase->escape("O'Reilly");
         $this->assertEquals("O\\'Reilly", $escapedValue);
+    }
+}
+
+class MockDatabase extends Database
+{
+    public function runQuery(string $sql, array $bindValues = []): bool
+    {
+        // Mock implementation
+        return true;
+    }
+
+    public function executeQuery(): bool
+    {
+        // Mock implementation
+        return true;
+    }
+
+    public function insertId(): int
+    {
+        // Mock implementation
+        return 1;
+    }
+
+    public function escape(string $value): string
+    {
+        // Mock implementation
+        return addslashes($value);
+    }
+
+    public function fetch()
+    {
+        // Mock implementation
+        return null;
+    }
+    public function close()
+    {
+        // Mock implementation
+    }
+
+    public static function getInstance(
+        string $host,
+        string $user,
+        string $pass,
+        string $db,
+        array $configs = []
+    ) {
+        // Mock implementation
+        return new self();
     }
 }

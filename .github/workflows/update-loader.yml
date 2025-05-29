@@ -1,4 +1,4 @@
-name: Update Validator Package
+name: Update Loader Package
 
 on:
   workflow_dispatch:  # Allows manual triggering of the workflow
@@ -23,7 +23,7 @@ jobs:
         run: composer install
 
       - name: Update specific package
-        run: composer update gp/validator
+        run: composer update gp/loader  # Replace with your package name
 
       - name: Check for changes
         run: |
@@ -34,7 +34,7 @@ jobs:
       - name: Commit and push changes
         run: |
           git add composer.json composer.lock
-          git commit -m "feat: update gp/validator to latest version" || echo "No changes to commit"
+          git commit -m "feat: update gp/loader to latest version" || echo "No changes to commit"
           git push origin ${{ github.event.inputs.target_branch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

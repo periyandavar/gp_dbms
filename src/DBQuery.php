@@ -2,6 +2,8 @@
 
 namespace Database;
 
+use InvalidArgumentException;
+
 /**
  * Super class for all DBQuery. All drivers should extend this DBQuery
  * DBQuery class consists of basic level functions for various purposes and
@@ -10,6 +12,11 @@ namespace Database;
  */
 class DBQuery
 {
+    public const CONDITION_AND = 'AND';
+    public const CONDITION_OR = 'OR';
+    public const SORT_ASC = 'ASC';
+    public const SORT_DESC = 'DESC';
+
     /**
      * This will contains the executed full query after the execute() get executed
      *
@@ -103,10 +110,15 @@ class DBQuery
         $this->bindValues = [];
         $this->_limit = null;
         $this->_orderby = null;
-        $this->_where = null;
+        $this->_where = '';
         $this->_join = null;
         $this->_groupby = null;
         $this->_having = null;
+    }
+
+    public function __construct()
+    {
+        $this->_resetQuery();
     }
 
     public function reset()
@@ -127,27 +139,13 @@ class DBQuery
     public function delete(string $table, mixed $where = null): DBQuery
     {
         $this->_resetQuery();
-        $this->_sql = "DELETE FROM `$table`";
+        $this->_sql = "DELETE FROM {$this->addBackticks($table)}";
         if (isset($where)) {
             if (is_array($where)) {
                 [$where, $this->bindValues] = $this->frameWhere($where);
             }
             $this->_where = " WHERE $where";
         }
-
-        return $this;
-    }
-
-    /**
-     * Set the values in update query
-     *
-     * @return DBQuery
-     */
-    public function setTo(...$args): DBQuery
-    {
-        $change = implode(',', $args);
-        // $this->_sql .= Utility::endsWith($this->_sql, 'SET ') ? '' : ',';
-        $this->_sql .= $change;
 
         return $this;
     }
@@ -172,39 +170,44 @@ class DBQuery
         ?string $join = null
     ): DBQuery {
         $this->_resetQuery();
-        $set = '';
-        $index = 1;
-        foreach ($fields as $column => $field) {
+
+        // Ensure table and join are properly sanitized
+        $table = trim($table);
+        $join = $join ? trim($join) : '';
+
+        // Construct the SET clause
+        $setClauses = [];
+        foreach ($fields as $column => $value) {
             $column = trim($column);
-            if (strpos($column, '.')) {
-                $column = explode('.', $column);
-                $column = $column[0] . '`.`' . $column[1];
-            }
-            $set .= "`$column` = ?";
-            $this->bindValues[] = $field;
-            if ($index < count($fields)) {
-                $set .= ', ';
-            }
-            $index++;
+
+            // Handle dot notation for column names
+            $setClauses[] = "{$this->addBackticks($column)} = ?";
+            $this->bindValues[] = $value;
         }
-        $this->_sql = "UPDATE $table " . $join . ' SET ' . $set;
-        if (isset($where)) {
+
+        $set = $this->frameFields($setClauses, false);
+        $this->_sql = "UPDATE {$this->addBackticks($table)} $join SET $set";
+
+        // Handle WHERE clause
+        if (!empty($where)) {
             if (is_array($where)) {
-                [$where, $bindValues] = $this->frameWhere($where);
+                [$whereClause, $bindValues] = $this->frameWhere($where);
+                $this->_where = " WHERE $whereClause";
                 $this->bindValues = array_merge($this->bindValues, $bindValues);
+            } else {
+                $this->_where = " WHERE $where";
             }
-            $this->_where = " WHERE $where";
         }
 
         return $this;
     }
 
-    public function frameWhere($data, $condition = 'AND')
+    public function frameWhere($data, $condition = self::CONDITION_AND)
     {
         $result = [];
         $bindValues = [];
         foreach ($data as $key => $value) {
-            $result[] = "$key = ?";
+            $result[] = "{$this->addBackticks($key)} = ?";
             $bindValues[] = $value;
         }
 
@@ -229,35 +232,27 @@ class DBQuery
         array $funcfields = []
     ): DBQuery {
         $this->_resetQuery();
-        $keys = '';
-        if (count($fields) > 0) {
-            $keys = implode('`, `', array_keys($fields));
-        }
-        $values = '';
-        $index = 1;
-        foreach ($fields as $column => $value) {
-            $values .= '?';
-            $this->bindValues[] = $value;
-            if ($index < count($fields)) {
-                $values .= ',';
-            }
-            $index++;
-        }
-        $values = ($values != '' && count($funcfields) > 0)
-            ? $values . ', '
-            : $values;
-        $index = 1;
+
+        // Prepare the keys and values for the `fields` array
+        $keys = $this->frameFields(array_keys($fields));
+        $values = $this->frameFields(array_fill(0, count($fields), '?'), false);
+        $this->bindValues = array_values($fields);
+
+        // Prepare the keys and values for the `funcfields` array
         foreach ($funcfields as $column => $value) {
-            $values .= "($value)";
-            $keys = $keys != ''
-                ? $keys . '`, `' . $column
-                : $column;
-            if ($index < count($funcfields)) {
-                $values .= ',';
+            if (!empty($keys)) {
+                $keys .= ', ';
             }
-            $index++;
+            $keys .= $this->addBackticks($column);
+
+            if (!empty($values)) {
+                $values .= ', ';
+            }
+            $values .= "($value)";
         }
-        $this->_sql = "INSERT INTO $table (`$keys`) VALUES ({$values})";
+        // $keys = trim($keys, '`');
+        // Construct the SQL query
+        $this->_sql = "INSERT INTO $table ($keys) VALUES ($values)";
 
         return $this;
     }
@@ -272,29 +267,16 @@ class DBQuery
     public function select(...$columns): DBQuery
     {
         $this->_resetQuery();
-        for ($i = 0; $i < count($columns); $i++) {
-            $columns[$i] = trim($columns[$i]);
-            if (strpos($columns[$i], ' ') && strpos($columns[$i], '.')) {
-                $columns[$i] = explode(' ', $columns[$i]);
-                $columns[$i][0] = explode('.', $columns[$i][0]);
-                $columns[$i] = '`'
-                    . $columns[$i][0][0]
-                    . '` .`'
-                    . $columns[$i][0][1]
-                    . '` '
-                    . $columns[$i][1];
-            } elseif (strpos($columns[$i], ' ')) {
-                $columns[$i] = explode(' ', $columns[$i]);
-                $columns[$i] = '`' . $columns[$i][0] . '` ' . $columns[$i][1];
-            } elseif (strpos($columns[$i], '.')) {
-                $columns[$i] = explode('.', $columns[$i]);
-                $columns[$i] = '`' . $columns[$i][0] . '`.`' . $columns[$i][1] . '`';
-            } else {
-                $columns[$i] = '`' . $columns[$i] . '`';
-            }
+
+        if (empty($columns)) {
+            $this->_columns = '*';
+
+            return $this;
         }
-        $columns = implode(', ', $columns);
-        $this->_columns .= "$columns";
+
+        // $processedColumns = $this->backticksHandler($columns);
+
+        $this->_columns .= $this->frameFields($columns);
 
         return $this;
     }
@@ -305,12 +287,28 @@ class DBQuery
      *
      * @return DBQuery
      */
-    public function selectAs(...$selectData): DBQuery
+
+    public function selectAs($selectData): DBQuery
     {
-        $selectData = implode(',', $selectData);
-        $this->_columns = ($this->_columns != null)
-            ? $this->_columns . ', ' . $selectData
-            : $selectData;
+        $this->_columns = empty($this->_columns) ? '' : $this->_columns . ', ';
+        // foreach ($selectData as $key => $value) {
+        //     if (is_numeric($key)) {
+        //         $this->_columns .= "`$value`, ";
+        //     } else {
+        //         $this->_columns = "`$key` AS $value, ";
+        //     }
+        // }
+        // $this->_columns = implode(', ', $this->backticksHandler($selectData));
+        $this->_columns .= $this->frameFields($selectData);
+        // $this->_columns = rtrim($this->_columns, ', ');
+
+        return $this;
+    }
+
+    public function selectWith(...$args)
+    {
+        $this->_columns = empty($this->_columns) ? '' : $this->_columns . ', ';
+        $this->_columns .= $this->frameFields($args, false);
 
         return $this;
     }
@@ -338,13 +336,7 @@ class DBQuery
      */
     public function from(string $tableName): DBQuery
     {
-        if (strpos($tableName, ' ')) {
-            $tableName = explode(' ', $tableName);
-            $tableName = '`' . $tableName[0] . '` ' . $tableName[1];
-        } else {
-            $tableName = '`' . $tableName . '`';
-        }
-        $this->_table = $tableName;
+        $this->_table = $this->addBackticks($tableName);
 
         return $this;
     }
@@ -352,14 +344,24 @@ class DBQuery
     /**
      * Appends the string to the where condition
      *
-     * @param string $where Where condition string
+     * @param string $where     Where condition string
+     * @param string $condition condtion to be used to concat.
      *
      * @return DBQuery
      */
-    public function appendWhere(string $where): DBQuery
+    public function appendWhere(string $where, string $condition = self::CONDITION_AND): DBQuery
     {
-        $this->_where = $this->_where == null ? '' : $this->_where;
-        $this->_where .= $where;
+        if ($this->_where === '') {
+            $condition = '';
+            $this->_where = ' WHERE ';
+        }
+        if (empty($condition)) {
+            $this->_where .= $where;
+
+            return $this;
+        }
+        $this->_where = rtrim($this->_where, ' ');
+        $this->_where .= ' ' . $condition . ' ' . $where ;
 
         return $this;
     }
@@ -372,6 +374,17 @@ class DBQuery
     public function getWhere(): string
     {
         return $this->_where;
+    }
+
+    public function addWhere(string $type = self::CONDITION_AND, ...$args): DBQuery
+    {
+        $where = empty($this->_where) ? ' WHERE ' : $this->_where . " $type ";
+        [$temp_where, $temp_param] = $this->frameWhereQuery($type, ...$args);
+
+        $this->_where = $where . trim($temp_where);
+        $this->bindValues = array_merge($this->bindValues, $temp_param);
+
+        return $this;
     }
 
     /**
@@ -391,67 +404,66 @@ class DBQuery
      *
      * @return DBQuery
      */
-    public function where(...$args): DBQuery
+    public function where(array|string ...$args): DBQuery
     {
-        if ($this->_where == null) {
-            $this->_where .= ' WHERE ';
+        return $this->addWhere(self::CONDITION_AND, ...$args);
+    }
+
+    private function getSingleArgWhere($arg, $type = self::CONDITION_AND): array
+    {
+        $type = strtoupper($type);
+        $where = '';
+        $bindValues = [];
+        if (! is_array($arg)) {
+            return [$arg, []];
+        }
+
+        $keys = array_keys($arg);
+        if (array_keys($keys) !== $keys) {
+            return $this->frameWhere($arg, $type);
+        }
+
+        foreach ($arg as $param) {
+            [$temp_where, $temp_param] = $this->getCondition((array) $param);
+            $where = empty($where) ? $temp_where : $where . " {$type} {$temp_where}";
+            $bindValues = array_merge($bindValues, $temp_param);
+        }
+
+        return [$where, $bindValues];
+    }
+
+    private function getThreeArgWhere(string $field, string $operator, mixed $value): array
+    {
+        // $type = strtoupper($type);
+        $field = $this->addBackticks($field);
+
+        // $this->_where = empty($this->_where) ?  : $this->_where . " {$type} {$field} {$operator} ?";
+
+        return [
+            " {$field} {$operator} ?",
+            [$value]
+        ];
+    }
+
+    private function getCondition(array $param): array
+    {
+        $count = count($param);
+        $where = '';
+        $bindValues = [];
+
+        if ($count === 1) {
+            $where .= $param[0];
+        } elseif ($count === 2) {
+            $where .= "{$this->addBackticks($param[0])} = ?";
+            $bindValues = [$param[1]];
+        } elseif ($count === 3) {
+            $where .= $this->addBackticks($param[0]) . " {$param[1]} ?";
+            $bindValues = [$param[2]];
         } else {
-            $this->_where .= ' AND ';
-        }
-        $count = count($args);
-
-        if ($count == 1) {
-            $arg = $args[0];
-
-            if (is_array($arg)) {
-                $keys = array_keys($arg);
-                if (array_keys($keys) !== $keys) {
-                    [$this->_where, $bindValues] = $this->frameWhere($arg);
-                    $this->bindValues = array_merge($this->bindValues, $bindValues);
-
-                    return $this;
-                }
-
-                $index = 1;
-
-                foreach ($arg as $param) {
-                    if ($index != 1) {
-                        $this->_where .= ' AND ';
-                    }
-                    $param = (array) $param;
-                    $parmCount = count($param);
-                    if ($parmCount == 1) {
-                        $this->_where .= $param;
-                    } elseif ($parmCount == 2) {
-                        $this->_where .= $param[0];
-                        $this->bindValues[] = $param[1];
-                    } elseif ($parmCount == 3) {
-                        $this->_where .= '`'
-                            . trim($param[0])
-                            . '`'
-                            . $param[1]
-                            . ' ?';
-                        $this->bindValues[] = $param[2];
-                    }
-                    $index++;
-                }
-            } else {
-                $this->_where .= $arg;
-            }
-        } elseif ($count == 2) {
-            $this->_where .= $args[0];
-            $this->bindValues[] = $args[1];
-        } elseif ($count == 3) {
-            $field = trim($args[0]);
-            if (strpos($field, '.')) {
-                $field = explode('.', $field);
-                $field = $field[0] . '`.`' . $field[1];
-            }
-            $this->_where .= '`' . $field . '`' . $args[1] . ' ?';
-            $this->bindValues[] = $args[2];
+            throw new InvalidArgumentException('Invalid condition format.');
         }
 
-        return $this;
+        return [$where, $bindValues];
     }
     /**
      * This function to add where condition with OR
@@ -472,54 +484,7 @@ class DBQuery
      */
     public function orWhere(...$args): DBQuery
     {
-        if ($this->_where == null) {
-            $this->_where .= ' WHERE ';
-        } else {
-            $this->_where .= ' OR ';
-        }
-        $count = count($args);
-
-        if ($count == 1) {
-            $arg = $args[0];
-
-            if (is_array($arg)) {
-                $index = 1;
-
-                foreach ($arg as $param) {
-                    if ($index !== 1) {
-                        $this->_where .= ' OR ';
-                    }
-                    $parmCount = count($param);
-                    if ($parmCount == 1) {
-                        $this->_where .= $param;
-                    } elseif ($parmCount == 2) {
-                        $this->_where .= $param[0];
-                        $this->bindValues[] = $param[1];
-                    } elseif ($parmCount == 3) {
-                        $this->_where .= '`' . trim($param[0]) . '`'
-                             . $param[1]
-                             . ' ?';
-                        $this->bindValues[] = $param[2];
-                    }
-                    $index++;
-                }
-            } else {
-                $this->_where .= $arg;
-            }
-        } elseif ($count == 2) {
-            $this->_where .= $args[0];
-            $this->bindValues[] = $args[1];
-        } elseif ($count == 3) {
-            $field = trim($args[0]);
-            if (strpos($field, '.')) {
-                $field = explode('.', $field);
-                $field = $field[0] . '`.`' . $field[1];
-            }
-            $this->_where .= '`' . $field . '`' . $args[1] . ' ?';
-            $this->bindValues[] = $args[2];
-        }
-
-        return $this;
+        return $this->addWhere(self::CONDITION_OR, ...$args);
     }
 
     /**
@@ -535,7 +500,7 @@ class DBQuery
         if ($offset == null) {
             $this->_limit = " LIMIT $limit";
         } else {
-            $this->_limit = " LIMIT $offset,$limit";
+            $this->_limit = " LIMIT $offset, $limit";
         }
 
         return $this;
@@ -549,19 +514,15 @@ class DBQuery
      *
      * @return DBQuery
      */
-    public function orderBy(string $fieldName, string $order = 'ASC'): DBQuery
+    public function orderBy(string $fieldName, string $order = self::SORT_ASC): DBQuery
     {
         $fieldName = $fieldName ? trim($fieldName) : '';
 
         $order = trim(strtoupper($order));
 
         // validate it's not empty and have a proper valuse
-        if (!empty($fieldName) && ($order == 'ASC' || $order == 'DESC')) {
-            if ($this->_orderby == null) {
-                $this->_orderby = " ORDER BY $fieldName $order";
-            } else {
-                $this->_orderby .= ", $fieldName $order";
-            }
+        if (!empty($fieldName) && ($order == self::SORT_ASC || $order == self::SORT_DESC)) {
+            $this->_orderby = empty($this->_orderby) ? " ORDER BY $fieldName $order" : $this->_orderby . ", $fieldName $order";
         }
 
         return $this;
@@ -630,18 +591,23 @@ class DBQuery
      * This function used to build inner join
      *
      * @param string $tableName Table Name
+     * @param string $on        On
      *
      * @return DBQuery
      */
-    public function innerJoin(string $tableName): DBQuery
+    public function innerJoin(string $tableName, string $on = ''): DBQuery
     {
-        if (strpos($tableName, ' ')) {
-            $tableName = explode(' ', $tableName);
-            $tableName = '`' . $tableName[0] . '` ' . $tableName[1];
-        } else {
-            $tableName = '`' . $tableName . '`';
+        return $this->join($tableName, $on, 'INNER');
+    }
+
+    public function join(string $tableName, string $on = '', string $type = 'INNER'): DBQuery
+    {
+        $type = strtoupper($type);
+        $this->_join .= " $type JOIN " . $this->addBackticks($tableName);
+
+        if (! empty($on)) {
+            return $this->on($on);
         }
-        $this->_join .= ' INNER JOIN ' . $tableName;
 
         return $this;
     }
@@ -650,60 +616,39 @@ class DBQuery
      * This function used to build left join
      *
      * @param string $tableName Table Name
+     * @param string $on        On
      *
      * @return DBQuery
      */
-    public function leftJoin(string $tableName): DBQuery
+    public function leftJoin(string $tableName, string $on = ''): DBQuery
     {
-        if (strpos($tableName, ' ')) {
-            $tableName = explode(' ', $tableName);
-            $tableName = '`' . $tableName[0] . '` ' . $tableName[1];
-        } else {
-            $tableName = '`' . $tableName . '`';
-        }
-        $this->_join .= ' LEFT JOIN ' . $tableName;
-
-        return $this;
+        return $this->join($tableName, $on, 'LEFT');
     }
 
     /**
      * This function used to build right join
      *
      * @param string $tableName TableName
+     * @param string $on        On
      *
      * @return DBQuery
      */
-    public function rightJoin(string $tableName): DBQuery
+    public function rightJoin(string $tableName, string  $on = ''): DBQuery
     {
-        if (strpos($tableName, ' ')) {
-            $tableName = explode(' ', $tableName);
-            $tableName = '`' . $tableName[0] . '` ' . $tableName[1];
-        } else {
-            $tableName = '`' . $tableName . '`';
-        }
-        $this->_join .= ' Right JOIN ' . $tableName;
-
-        return $this;
+        return $this->join($tableName, $on, 'RIGHT');
     }
 
     /**
      * This function used to build cross join
      *
      * @param string $tableName Table Name
+     * @param string $on        On
      *
      * @return DBQuery
      */
-    public function crossJoin(string $tableName): DBQuery
+    public function crossJoin(string $tableName, string $on = ''): DBQuery
     {
-        if (strpos($tableName, ' ')) {
-            $tableName = explode(' ', $tableName);
-            $tableName = '`' . $tableName[0] . '` ' . $tableName[1];
-        } else {
-            $tableName = '`' . $tableName . '`';
-        }
-        $this->_join .= ' CROS JOIN ' . $tableName;
-
-        return $this;
+        return $this->join($tableName, $on, 'CROSS');
     }
 
     /**
@@ -729,7 +674,7 @@ class DBQuery
      */
     public function using(string $field): DBQuery
     {
-        $this->_join .= ' USING(' . $field . ')';
+        $this->_join .= " USING({$this->addBackticks($field)})";
 
         return $this;
     }
@@ -741,8 +686,8 @@ class DBQuery
      */
     public function groupBy(...$fields): DBQuery
     {
-        $fields = implode(', ', $fields);
-        $this->_groupby = ' GROUP BY ' . $fields;
+        $fields = $this->frameFields($fields);
+        $this->_groupby = " GROUP BY ($fields)";
 
         return $this;
     }
@@ -771,7 +716,7 @@ class DBQuery
                 . ' FROM '
                 . $this->_table
                 . $this->_join
-                . $this->_where
+                . (empty($this->_where) ? '' : ' WHERE ' . $this->_where)
                 . $this->_groupby
                 . $this->_having
                 . $this->_orderby
@@ -781,5 +726,105 @@ class DBQuery
         }
 
         return $this->query;
+    }
+
+    public function having(string $having, $bindValues = [])
+    {
+        $this->_having = ' HAVING ' . $having;
+        $this->appendBindValues($bindValues);
+
+        return $this;
+    }
+
+    private function addBackticks(string $field)
+    {
+        $field = trim($field);
+        $field = str_replace('`', '', $field);
+        if (strpos($field, ' ') && strpos($field, '.')) {
+            [$tableColumn, $alias] = explode(' ', $field);
+            [$table, $col] = explode('.', $tableColumn);
+
+            return "`$table`.`$col` AS $alias";
+        }
+        if (strpos($field, '.') !== false) {
+            [$table, $field] = explode('.', $field);
+
+            return "`$table`.`$field`";
+        }
+
+        if (strpos($field, ' ') !== false) {
+            [$col, $alias] = explode(' ', $field);
+
+            return "`$col` AS $alias";
+        }
+
+        return "`$field`";
+    }
+
+    private function backticksHandler(array $fields): array
+    {
+        return array_map(function($field, $key) {
+            if (is_numeric($key)) {
+                return $this->addBackticks($field);
+            }
+
+            return $this->addBackticks("$field $key");
+        }, $fields, array_keys($fields));
+    }
+
+    private function frameFields(array $fields, $add_backtick = true): string
+    {
+        $fields = $add_backtick ? $this->backticksHandler($fields) :
+            array_map('trim', $fields);
+
+        return implode(', ', $fields);
+    }
+
+    public function frameWhereQuery($type = self::CONDITION_AND, ...$args)
+    {
+        $type = strtoupper($type);
+
+        $count = count($args);
+
+        switch ($count) {
+            case 1:
+                return $this->getSingleArgWhere($args[0], $type);
+            case 2:
+                return [
+                    $args[0],
+                    [$args[1]]
+                ];
+
+            case 3:
+                return $this->getThreeArgWhere($args[0], $args[1], $args[2]);
+            default:
+                throw new InvalidArgumentException("Invalid number of arguments passed to 'where' method.");
+        }
+    }
+
+    public function addWhereGroup(string $type = self::CONDITION_AND, string $inner_condition = self::CONDITION_AND, ...$args): DBQuery
+    {
+        $where = empty($this->_where) ? ' WHERE (' : $this->_where . " $type (";
+        [$temp_where, $temp_param] = $this->frameWhereQuery($inner_condition, ...$args);
+
+        $this->_where = $where . trim($temp_where) . ')';
+        $this->bindValues = array_merge($this->bindValues, $temp_param);
+
+        return $this;
+    }
+
+    public function andWhereGroup($inner_condition = self::CONDITION_AND, ...$args): DBQuery
+    {
+        return $this->addWhereGroup(self::CONDITION_AND, $inner_condition, ...$args);
+    }
+
+    public function orWhereGroup($inner_condition = self::CONDITION_AND, ...$args): DBQuery
+    {
+        return $this->addWhereGroup(self::CONDITION_OR, $inner_condition, ...$args);
+    }
+
+    public function __toString()
+    {
+        return $this->getQuery();
     }
 }

@@ -8,8 +8,6 @@ use Loader\Config\ConfigLoader;
 
 class DatabaseFactory
 {
-    private static $db;
-
     private static $config = [];
 
     private static $dbs = [];
@@ -19,18 +17,15 @@ class DatabaseFactory
      *
      * @return Database|null
      */
-    public static function create($config)
+    private static function create($config)
     {
-        if (isset(self::$db)) {
-            return self::$db;
-        }
         try {
             $driver = explode('/', $config['driver'] ?? 'Pdo/Mysql');
             $driverclass = 'Database\\Driver\\' . ucfirst($driver[0]) . 'Driver';
             if (!class_exists($driverclass)) {
                 throw new DatabaseException("Driver class: {$driverclass} not found to create the db instance", DatabaseException::DRIVER_NOT_FOUND_ERROR, null, ['driver' => $driverclass]);
             }
-            self::$db = $driverclass::getInstance(
+            $db = $driverclass::getInstance(
                 $config['host'],
                 $config['user'],
                 $config['password'],
@@ -38,29 +33,29 @@ class DatabaseFactory
                 $driver
             );
 
-            return self::$db;
+            return $db;
         } catch (Exception $e) {
             if ($e instanceof DatabaseException) {
                 throw $e;
             }
-            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e);
+            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_CONNECTION_ERROR, $e);
         }
     }
 
     /**
      * Set up config
      *
-     * @param ConfigLoader[] $config
+     * @param array[]|ConfigLoader[] $configs
      */
-    public static function setUpConfig(array $config)
+    public static function setUpConfig(array $configs)
     {
-        if (count($config) === 1 && isset($config[0])) {
-            $config['default'] = $config[0]->getAll();
-
-            return;
+        foreach ($configs as $name => $config) {
+            self::$config[$name] = $config instanceof ConfigLoader ? $config->getAll() : $config;
         }
-        foreach ($config as $name => $value) {
-            self::$config[$name] = $value->getAll();
+
+        if (!isset(self::$config['default']) && ! empty(self::$config)) {
+            // Set the first config as default if no default is set
+            self::$config['default'] = reset(self::$config);
         }
     }
 

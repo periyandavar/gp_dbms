@@ -42,7 +42,7 @@ class RelationTest extends TestCase
         $this->assertEquals('id', $relation->getPrimaryKey());
         $this->assertEquals('RelatedModel', $relation->getRelatedModel());
         $this->assertEquals('foreign_key', $relation->getForeignKey());
-        $this->assertSame($this->mockQuery, $relation->getQuery());
+        $this->assertSame($this->mockQuery, $relation->getDbQuery());
     }
 
     public function testSettersAndGetters()
@@ -53,13 +53,13 @@ class RelationTest extends TestCase
         $relation->setPrimaryKey('new_id');
         $relation->setRelatedModel('NewRelatedModel');
         $relation->setForeignKey('new_foreign_key');
-        $relation->setQuery($this->mockQuery);
+        $relation->setDbQuery($this->mockQuery);
 
         $this->assertSame($this->mockModel, $relation->getModel());
         $this->assertEquals('new_id', $relation->getPrimaryKey());
         $this->assertEquals('NewRelatedModel', $relation->getRelatedModel());
         $this->assertEquals('new_foreign_key', $relation->getForeignKey());
-        $this->assertSame($this->mockQuery, $relation->getQuery());
+        $this->assertSame($this->mockQuery, $relation->getDbQuery());
     }
 
     public function testResolve()
