@@ -7,14 +7,14 @@ use Database\Exception\DatabaseException;
 use Database\Orm\Relation\HasMany;
 use Database\Orm\Relation\HasOne;
 use Database\Orm\Relation\Relation;
+use JsonSerializable;
 use Loader\Container;
-use Validator\Field\Field;
 use Validator\Field\Fields;
 
 /**
  *
  */
-abstract class Model
+abstract class Record extends Model implements JsonSerializable
 {
     /**
      * Original state of the model, will have the db row results.
@@ -23,8 +23,6 @@ abstract class Model
      */
     protected $original_state = [];
     protected static $db;
-    protected $attr = [];
-
     protected DBQuery $dbQuery;
 
     private $with_models = [];
@@ -51,13 +49,6 @@ abstract class Model
     private $is_loaded_by_orm = false;
 
     private $relations = [];
-
-    private $fields;
-
-    public function __construct()
-    {
-        $this->setField();
-    }
 
     /**
      * Set/unset the trigger event flag.
@@ -91,7 +82,6 @@ abstract class Model
 
         if ($_is_dirty_update) {
             $updated_fields = array_diff($field_values, $this->original_state);
-
             if (empty($updated_fields)) {
                 return true;
             }
@@ -100,6 +90,37 @@ abstract class Model
         }
 
         return $this->update($field_values, "$key = '$value'");
+    }
+
+    /**
+     * Return the fields that should be skipped while updating the model.
+     *
+     * @return string[]
+     */
+    public function skipUpdateOn()
+    {
+        return [
+            $this->getUniqueKey(),
+        ];
+    }
+
+    /**
+     * Filter the update fields, remove the fields that should be skipped while updating the model.
+     *
+     * @param array $fields
+     *
+     * @return array
+     */
+    public function filterUpdateFields(array $fields)
+    {
+        $skipUpdateOn = $this->skipUpdateOn();
+        foreach ($fields as $key => $value) {
+            if (in_array($key, $skipUpdateOn)) {
+                unset($fields[$key]);
+            }
+        }
+
+        return $fields;
     }
 
     /**
@@ -169,7 +190,10 @@ abstract class Model
         $this->triggerEvent(Events::EVENT_BEFORE_SAVE);
         $this->triggerEvent(Events::EVENT_BEFORE_INSERT);
         $result = $db->insert($this->getTableName(), $_data)->execute();
+
         if ($result) {
+            $key = static::getUniqueKey();
+            $this->$key = $db->insertId();
             $this->triggerEvent(Events::EVENT_AFTER_SAVE);
             $this->triggerEvent(Events::EVENT_AFTER_INSERT);
         }
@@ -197,7 +221,6 @@ abstract class Model
     public static function getTableName()
     {
         return basename(str_replace('\\', '/', static::class));
-        // return class_basename(static::class);
     }
 
     /**
@@ -225,7 +248,7 @@ abstract class Model
      *
      * @param mixed $_identifier
      *
-     * @return Model|null
+     * @return static|null
      */
     public static function find($_identifier)
     {
@@ -251,6 +274,13 @@ abstract class Model
         return $model;
     }
 
+    /**
+     * Get the model from the db result array.
+     *
+     * @param mixed $result
+     *
+     * @return static
+     */
     private static function getModel($result)
     {
         $result = (array) $result;
@@ -262,12 +292,12 @@ abstract class Model
     /**
      * Handle with
      *
-     * @param Model[] $models
-     * @param Model   $ref
+     * @param static[] $models
+     * @param Record   $ref
      *
      * @return array
      */
-    private static function loadWith(array $models, Model $ref)
+    private static function loadWith(array $models, Record $ref)
     {
         $updatedModels = $models;
 
@@ -276,22 +306,14 @@ abstract class Model
         }
 
         $withModels = $ref->getWithModels();
-        foreach ($withModels as $with) {
-            if (method_exists($ref, $with)) {
-                $ref->$with();
-            }
-        }
 
-        $relations = $ref->getRelations();
-
-        if (empty($withModels) || empty($relations)) {
+        if (empty($withModels)) {
             return $updatedModels;
         }
 
         foreach ($withModels as $with) {
-            $relation = $relations[$with];
-            if (isset($relation)) {
-                self::handleRelation($relation, $updatedModels, $with);
+            if (method_exists($ref, $with)) {
+                self::handleRelation($ref->$with(), $updatedModels, $with);
             }
         }
 
@@ -302,7 +324,7 @@ abstract class Model
      * Handle relations
      *
      * @param \Database\Orm\Relation\Relation $relation
-     * @param Model[]                         $models
+     * @param static[]                        $models
      *
      * @return array
      */
@@ -321,24 +343,19 @@ abstract class Model
         $fkValues = implode(',', $fkValues);
         $relationClass = $relation->getRelatedModel();
 
-        $dbQuery = (new DBQuery())->selectAll()->from($relationClass::getTableName())->where(" {$key2} IN ($fkValues) ");
+        $dbQuery = $relation->getDbQuery()->where(" {$key2} IN ($fkValues) ");
         $result = false;
-        if ($relation instanceof HasOne) {
-            $result = (new $relationClass())->setDbQuery($dbQuery)->one();
-        }
-
-        if ($relation instanceof HasMany) {
-            $result = (new $relationClass())->setDbQuery($dbQuery)->all();
-        }
+        $result = (new $relationClass())->setDbQuery($dbQuery)->with($relation->getWithModels())->all();
 
         if (! $result) {
             return $updatedModels;
         }
 
-        return array_map(function($model) use ($result, $with, $key1, $key2) {
-            $model->$with = array_values(array_filter($result, function($m) use ($key2, $key1, $model) {
+        return array_map(function($model) use ($result, $with, $key1, $key2, $isHasMany) {
+            $res = array_values(array_filter($result, function($m) use ($key2, $key1, $model) {
                 return $model->$key1 === $m->$key2;
             }));
+            $model->$with = $isHasMany ? $res : reset($res);
         }, $updatedModels);
     }
 
@@ -347,13 +364,13 @@ abstract class Model
      *
      * @param array $_db_row
      *
-     * @return Model
+     * @return static
      */
     public static function loadFromDbRow($_db_row)
     {
         $calledClass = get_called_class();
         /**
-         * @var Model
+         * @var static
          */
         $object = new $calledClass();
         $model = $object->fromDbRow($_db_row);
@@ -369,21 +386,15 @@ abstract class Model
      *
      * @param array $_data
      *
-     * @return Model
+     * @return static
      */
-    public static function fromDbRow($_data)
+    public function fromDbRow(array $_data)
     {
-        $calledClass = get_called_class();
-        /**
-         * @var Model
-         */
-        $model = new $calledClass();
-
         foreach ($_data as $key => $value) {
-            $model->$key = $value;
+            $this->$key = $value;
         }
 
-        return $model;
+        return $this;
     }
 
     /**
@@ -425,6 +436,9 @@ abstract class Model
         return $result;
     }
 
+    /**
+     * @return static
+     */
     public static function select(?DBQuery $query = null)
     {
         $calledClass = get_called_class();
@@ -436,12 +450,16 @@ abstract class Model
 
         return $model;
     }
+
+    /**
+     * Get the first record based on the db query.
+     *
+     * @return static|null
+     */
     public function one()
     {
         $db = static::getDb();
-        // if (! $this->dbQuery) {
-        //     $this->dbQuery =
-        // }
+
         $result = $db->setDbQuery($this->dbQuery)->getOne();
         if (! $result) {
             return null;
@@ -449,9 +467,16 @@ abstract class Model
         $model = self::getModel($result);
         $model->setIsLoadedByOrm(true);
 
+        self::loadWith([$model], $this);
+
         return $model;
     }
 
+    /**
+     * Get all records based on the db query.
+     *
+     * @return static[]
+     */
     public function all()
     {
         $db = static::getDb();
@@ -473,6 +498,15 @@ abstract class Model
         return $models;
     }
 
+    /**
+     * Update all records based on the fields and where condition.
+     *
+     * @param array $fields
+     * @param mixed $where
+     * @param mixed $join
+     *
+     * @return bool
+     */
     public static function updateAll(array $fields, $where = null, $join = null)
     {
         $db = static::getDb();
@@ -483,6 +517,13 @@ abstract class Model
         return $result;
     }
 
+    /**
+     * Delete all records based on the where condition.
+     *
+     * @param mixed $where
+     *
+     * @return bool
+     */
     public static function deleteAll($where = null)
     {
         $db = static::getDb();
@@ -493,6 +534,13 @@ abstract class Model
         return $result;
     }
 
+    /**
+     * Set the db query for the model.
+     *
+     * @param DBQuery $query
+     *
+     * @return $this
+     */
     public function setDbQuery(DBQuery $query)
     {
         $this->dbQuery = $query;
@@ -505,7 +553,7 @@ abstract class Model
      *
      * @param mixed $_query
      *
-     * @return Model[]
+     * @return static[]
      */
     public static function findAll($_query = null)
     {
@@ -622,34 +670,72 @@ abstract class Model
         $this->is_loaded_by_orm = $_is_loaded_by_orm;
     }
 
+    /**
+     * Magic method to handle dynamic property access.
+     *
+     * @param string $name
+     *
+     * @return mixed
+     */
     public function __get($name)
     {
         if (method_exists($this, $name)) {
-            $this->$name();
-            if (isset($this->relations[$name])) {
-                $relation = $this->relations[$name];
-                $this->$name = $relation->handle();
-            }
+            $this->relations[$name] = $this->$name()->handle();
         }
 
-        return $this->attr[$name] ?? null;
+        return $this->attr[$name] ?? $this->relations[$name] ?? null;
     }
 
+    /**
+     * Returns the relation object by name.
+     *
+     * @param mixed $name
+     *
+     * @return HasMany|HasOne|mixed|null
+     */
     public function getRelation($name)
     {
         return $this->relations[$name] ?? null;
     }
 
+    /**
+     * Check if the relation exists.
+     *
+     * @param string $name
+     *
+     * @return bool
+     */
     public function isRelation($name)
     {
         return $this->getRelation($name) != null;
     }
 
+    /**
+     * Magic method to handle dynamic property setting.
+     *
+     * @param string $name
+     * @param mixed  $value
+     */
     public function __set($name, $value)
     {
+        if (method_exists($this, $name)) {
+            $this->relations[$name] = $value;
+
+            return;
+        }
+
         $this->attr[$name] = $value;
     }
 
+    /**
+     * Magic method to handle dynamic method calls.
+     *
+     * @param string $method
+     * @param array  $arguments
+     *
+     * @return mixed
+     * @throws DatabaseException
+     */
     public function __call($method, $arguments)
     {
         $db = static::getDb();
@@ -666,31 +752,46 @@ abstract class Model
         }
     }
 
+    /**
+     * Define a one-to-one relationship.
+     *
+     * @param string       $relatedModelClass
+     * @param string       $foreignKey
+     * @param string       $primaryKey
+     * @param DBQuery|null $query
+     *
+     * @return HasOne
+     */
     public function hasOne(string $relatedModelClass, string $foreignKey, string $primaryKey, ?DBQuery $query = null)
     {
         $backtrace = debug_backtrace();
         $name = $backtrace[1]['function'] ?? null;
-        if (! isset($name)) {
-            return null;
-        }
 
         $hasOne = new HasOne($this, $primaryKey, $relatedModelClass, $foreignKey, $query);
         $this->relations[$name] = $hasOne;
 
-        return $hasOne->handle();
+        return $hasOne;
     }
 
+    /**
+     * Define a one-to-many relationship.
+     *
+     * @param string       $relatedModelClass
+     * @param string       $foreignKey
+     * @param string       $primaryKey
+     * @param DBQuery|null $query
+     *
+     * @return HasMany
+     */
     public function hasMany(string $relatedModelClass, string $foreignKey, string $primaryKey, ?DBQuery $query = null)
     {
         $hasMany = new HasMany($this, $primaryKey, $relatedModelClass, $foreignKey, $query);
         $backtrace = debug_backtrace();
         $name = $backtrace[1]['function'] ?? null;
-        if (! isset($name)) {
-            return null;
-        }
+
         $this->relations[$name] = $hasMany;
 
-        return $hasMany->handle();
+        return $hasMany;
     }
 
     /**
@@ -698,7 +799,7 @@ abstract class Model
      *
      * @param string|array $with
      *
-     * @return Model
+     * @return static
      */
     public function with($with)
     {
@@ -712,73 +813,78 @@ abstract class Model
         return $this;
     }
 
+    /**
+     * Get the eager loading models.
+     *
+     * @return array
+     */
     public function getWithModels()
     {
         return $this->with_models;
     }
 
+    /**
+     * Get the relations of the model.
+     *
+     * @return array
+     */
     public function getRelations()
     {
         return $this->relations;
     }
 
+    /**
+     * Reload the model from the database.
+     *
+     * @return static|null
+     */
     public function reload()
     {
-        $primaryKey = $this->getUniqueId();
+        [$key, $value] = $this->getUniqueId();
 
-        return self::find($this->$primaryKey);
+        return self::find($value);
     }
 
+    /**
+     * Return the fields that should be skipped while inserting the model.
+     *
+     * @return string[]
+     */
     public function skipInsertOn()
     {
         return [];
     }
 
-    public function setValues($data)
+    /**
+     * Set the values of the model.
+     *
+     * @param array $values
+     *
+     * @return void
+     */
+    public function setValues(array $values)
     {
-        foreach ($data as $key => $value) {
+        foreach ($values as $key => $value) {
             $this->$key = $value;
         }
     }
 
-    public function validate()
-    {
-        $this->fields->setValues($this->getValues());
-
-        return $this->fields->validate();
-    }
-
+    /**
+     * Return the values of the model's attributes.
+     *
+     * @return array
+     */
     public function getValues()
     {
         return $this->toDbRow();
     }
 
-    public function getErrors()
-    {
-        return $this->fields->getErrors();
-    }
-
-    public function getError()
-    {
-        return $this->fields->getError();
-    }
-
-    public function getRules()
-    {
-        return [];
-    }
-
-    public function setField()
-    {
-        $rules = $this->getRules();
-        $this->fields = new Fields();
-        foreach ($rules as $name => $rule) {
-            $rules = $rule[0] ?? [];
-            $messages = $rule[1] ?? [];
-            $this->fields->addField(new Field($name, $this->$name, $rules, $messages));
-        }
-    }
-
+    /**
+     * Return the fields that should be used for soft delete.
+     * by default it returns an empty array, meaning it performs a hard delete.
+     *
+     * @return array
+     */
     public function useDelete()
     {
         return [];
