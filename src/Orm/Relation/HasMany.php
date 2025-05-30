@@ -3,7 +3,7 @@
 namespace Database\Orm\Relation;
 
 use Database\DBQuery;
-use Database\Orm\Model;
+use Database\Orm\Record;
 
 class HasMany extends Relation
 {
@@ -16,7 +16,7 @@ class HasMany extends Relation
         $this->query->where("{$this->foreignKey} = {$this->model->$primarykey}");
 
         /**
-         * @var Model
+         * @var Record
          */
         $targetModel = new $class();
 

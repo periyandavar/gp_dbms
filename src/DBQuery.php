@@ -716,7 +716,7 @@ class DBQuery
                 . ' FROM '
                 . $this->_table
                 . $this->_join
-                . (empty($this->_where) ? '' : ' WHERE ' . $this->_where)
+                . (empty($this->_where) ? '' : $this->_where)
                 . $this->_groupby
                 . $this->_having
                 . $this->_orderby

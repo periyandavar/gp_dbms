@@ -2,7 +2,7 @@
 
 namespace Database\Orm\Relation;
 
-use Database\Orm\Model;
+use Database\Orm\Record;
 
 class HasOne extends Relation
 {
@@ -14,7 +14,7 @@ class HasOne extends Relation
 
         $class = $this->relatedModel;
         /**
-         * @var Model
+         * @var Record
          */
         $targetModel = new $class();
 
