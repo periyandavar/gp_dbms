@@ -3,12 +3,13 @@
 use Database\DBQuery;
 use Database\Driver\PdoDriver;
 use Database\Orm\Model;
+use Database\Orm\Record;
 use Database\Orm\Relation\HasOne;
 use Loader\Container;
 use Mockery as m;
 use PHPUnit\Framework\TestCase;
 
-class RelatedModel2 extends Model
+class RelatedModel2 extends Record
 {
     public static function getTableName()
     {
