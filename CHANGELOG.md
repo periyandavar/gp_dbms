@@ -2,7 +2,19 @@
 
 ## [Unreleased](https://github.com/periyandavar/gp_dbms/tree/HEAD)
 
-[Full Changelog](https://github.com/periyandavar/gp_dbms/compare/1.0.5...HEAD)
+[Full Changelog](https://github.com/periyandavar/gp_dbms/compare/1.0.6...HEAD)
+
+**Closed issues:**
+
+- separate the model and record logic [\#10](https://github.com/periyandavar/gp_dbms/issues/10)
+
+**Merged pull requests:**
+
+- fix: add testcase [\#13](https://github.com/periyandavar/gp_dbms/pull/13) ([periyandavar](https://github.com/periyandavar))
+
+## [1.0.6](https://github.com/periyandavar/gp_dbms/tree/1.0.6) (2025-06-01)
+
+[Full Changelog](https://github.com/periyandavar/gp_dbms/compare/1.0.5...1.0.6)
 
 **Merged pull requests:**
 
