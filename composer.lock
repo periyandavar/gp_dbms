@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "gp/loader",
-            "version": "2.0.10",
+            "version": "2.0.12",
             "source": {
                 "type": "git",
                 "url": "https://github.com/periyandavar/gp_loader",
-                "reference": "1f696c0164713e5e1acda0d9360cdba0396f9a50"
+                "reference": "6c3f85b7fbad0ed98df7d3eb8f1ddf09d9f55ef4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/periyandavar/gp_loader/zipball/1f696c0164713e5e1acda0d9360cdba0396f9a50",
-                "reference": "1f696c0164713e5e1acda0d9360cdba0396f9a50",
+                "url": "https://api.github.com/repos/periyandavar/gp_loader/zipball/6c3f85b7fbad0ed98df7d3eb8f1ddf09d9f55ef4",
+                "reference": "6c3f85b7fbad0ed98df7d3eb8f1ddf09d9f55ef4",
                 "shasum": ""
             },
             "require": {
@@ -47,7 +47,7 @@
                 }
             ],
             "description": "A Loader library to autoload the classes and a container to support the dependency injections",
-            "time": "2025-05-07T17:00:52+00:00"
+            "time": "2025-05-31T05:51:33+00:00"
         },
         {
             "name": "gp/validator",
