@@ -51,16 +51,16 @@
         },
         {
             "name": "gp/validator",
-            "version": "1.0.5",
+            "version": "1.0.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/periyandavar/gp_validator",
-                "reference": "2b9556c710457a9d366da768bc78d1b3d2da228e"
+                "reference": "444583516b2ffbed362c2a2916507696227cee59"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/periyandavar/gp_validator/zipball/2b9556c710457a9d366da768bc78d1b3d2da228e",
-                "reference": "2b9556c710457a9d366da768bc78d1b3d2da228e",
+                "url": "https://api.github.com/repos/periyandavar/gp_validator/zipball/444583516b2ffbed362c2a2916507696227cee59",
+                "reference": "444583516b2ffbed362c2a2916507696227cee59",
                 "shasum": ""
             },
             "require": {
@@ -90,7 +90,7 @@
                 }
             ],
             "description": "A validator package for php web application",
-            "time": "2025-05-25T14:16:42+00:00"
+            "time": "2025-06-01T05:51:22+00:00"
         },
         {
             "name": "hamcrest/hamcrest-php",
@@ -4572,12 +4572,12 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {},
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.1"
     },
-    "platform-dev": [],
+    "platform-dev": {},
     "plugin-api-version": "2.6.0"
 }
