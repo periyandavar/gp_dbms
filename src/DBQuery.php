@@ -274,8 +274,6 @@ class DBQuery
             return $this;
         }
 
-        // $processedColumns = $this->backticksHandler($columns);
-
         $this->_columns .= $this->frameFields($columns);
 
         return $this;
@@ -291,16 +289,7 @@ class DBQuery
     public function selectAs($selectData): DBQuery
     {
         $this->_columns = empty($this->_columns) ? '' : $this->_columns . ', ';
-        // foreach ($selectData as $key => $value) {
-        //     if (is_numeric($key)) {
-        //         $this->_columns .= "`$value`, ";
-        //     } else {
-        //         $this->_columns = "`$key` AS $value, ";
-        //     }
-        // }
-        // $this->_columns = implode(', ', $this->backticksHandler($selectData));
         $this->_columns .= $this->frameFields($selectData);
-        // $this->_columns = rtrim($this->_columns, ', ');
 
         return $this;
     }
@@ -434,10 +423,7 @@ class DBQuery
 
     private function getThreeArgWhere(string $field, string $operator, mixed $value): array
     {
-        // $type = strtoupper($type);
         $field = $this->addBackticks($field);
-
-        // $this->_where = empty($this->_where) ?  : $this->_where . " {$type} {$field} {$operator} ?";
 
         return [
             " {$field} {$operator} ?",

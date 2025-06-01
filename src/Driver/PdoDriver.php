@@ -81,7 +81,7 @@ class PdoDriver extends Database
         return $this->run($stmt);
     }
 
-    private function getStmt($query = null, $bindValues = null)
+    protected function getStmt($query = null, $bindValues = null)
     {
         $query = $query ?? $this->query;
         $bindValues = $bindValues ?? $this->bindValues;
@@ -135,7 +135,7 @@ class PdoDriver extends Database
         $flag = false;
         try {
             $flag = $stmt->execute();
-            if ($flag == true) {
+            if ($flag) {
                 $this->result = $stmt;
             }
         } catch (PDOException $e) {

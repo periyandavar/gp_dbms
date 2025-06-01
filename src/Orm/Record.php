@@ -60,10 +60,13 @@ abstract class Record extends Model implements JsonSerializable
         $this->is_trigger_event = $_is_trigger_event;
     }
 
+    public function isTriggerEvent(): bool
+    {
+        return $this->is_trigger_event;
+    }
+
     /**
      * Save the model, insert the record if it does not exist, update the record if it exists and supports dirty update.
-     *
-     * @todo Currently the model support save based on the unique key, the model should be updated to support the update based on db query.
      *
      * @param bool $_is_dirty_update
      */
@@ -225,6 +228,8 @@ abstract class Record extends Model implements JsonSerializable
 
     /**
      * Delete the model. based on the unique key.
+     *
+     * @return bool
      */
     public function delete()
     {
@@ -236,7 +241,7 @@ abstract class Record extends Model implements JsonSerializable
         $db = static::getDb();
 
         if (empty($value)) {
-            return;
+            return false;
         }
         $db->delete(static::getTableName(), "$key = $value");
 
@@ -284,9 +289,8 @@ abstract class Record extends Model implements JsonSerializable
     private static function getModel($result)
     {
         $result = (array) $result;
-        $model = static::loadFromDbRow($result);
 
-        return $model;
+        return static::loadFromDbRow($result);
     }
 
     /**
@@ -512,9 +516,8 @@ abstract class Record extends Model implements JsonSerializable
         $db = static::getDb();
         $dbQuery = new DBQuery();
         $dbQuery->update(static::getTableName(), $fields, $where, $join);
-        $result = $db->setDbQuery($dbQuery)->execute();
 
-        return $result;
+        return $db->setDbQuery($dbQuery)->execute();
     }
 
     /**
@@ -529,9 +532,8 @@ abstract class Record extends Model implements JsonSerializable
         $db = static::getDb();
         $dbQuery = new DBQuery();
         $dbQuery->delete(static::getTableName(), $where);
-        $result = $db->setDbQuery($dbQuery)->execute();
 
-        return $result;
+        return $db->setDbQuery($dbQuery)->execute();
     }
 
     /**
