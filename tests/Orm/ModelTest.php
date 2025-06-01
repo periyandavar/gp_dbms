@@ -1,12 +1,12 @@
 <?php
 
 use Database\Driver\PdoDriver;
-use Database\Orm\Model;
+use Database\Orm\Record;
 use Loader\Container;
 use Mockery as m;
 use PHPUnit\Framework\TestCase;
 
-class TestModel extends Model
+class TestModel extends Record
 {
     public static function getTableName()
     {
@@ -32,24 +32,6 @@ class ModelTest extends TestCase
 
     protected function setUp(): void
     {
-        // Mock the database instance using Mockery
-        // $this->mockDb = m::mock('Database\Database')->makePartial();
-        // $this->mockDb->shouldReceive('reset')->andReturn(true);
-        // $this->mockDb->shouldReceive('execute')->andReturn(true);
-
-        // $this->mockDb->shouldReceive('update')->andReturnSelf();
-        // $this->mockDb->shouldReceive('insert')->andReturnSelf();
-        // $this->mockDb->shouldReceive('setDbQuery')->andReturnSelf();
-        // $this->mockDb->shouldReceive('delete')->andReturnSelf();
-        // $this->mockDb->shouldReceive('getOne')->andReturn((object) ['id' => 1, 'name' => 'Test']);
-        // $this->mockDb->shouldReceive('getAll')->andReturn([
-        //     (object) ['id' => 1, 'name' => 'Test1'],
-        //     (object) ['id' => 2, 'name' => 'Test2'],
-        // ]);
-
-        // // Mock the container to return the mocked database
-        // Container::set('db', $this->mockDb);
-
         // Mock the DBQuery instance
         $mockDbQuery = m::mock('Database\DBQuery')->makePartial();
         $mockDbQuery->shouldReceive('getSQL')->andReturn('SELECT * FROM test_table');
@@ -63,7 +45,7 @@ class ModelTest extends TestCase
         $this->mockDb->shouldReceive('update')->andReturnSelf();
         $this->mockDb->shouldReceive('executeQuery')->andReturn(true);
         $this->mockDb->shouldReceive('insert')->andReturnSelf();
-        // $this->mockDb->shouldReceive('__call')->andReturnSelf();
+        $this->mockDb->shouldReceive('insertId')->andReturn(1);
         $this->mockDb->setDbQuery($mockDbQuery);
         $this->mockDb->shouldReceive('delete')->andReturnSelf();
         $this->mockDb->shouldReceive('getOne')->andReturn((object) ['id' => 1, 'name' => 'Test']);
@@ -135,7 +117,6 @@ class ModelTest extends TestCase
     public function testValidate()
     {
         $model = new TestModel();
-        // $model->setField();
         $result = $model->validate();
 
         $this->assertTrue($result);
