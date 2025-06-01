@@ -2,7 +2,15 @@
 
 ## [Unreleased](https://github.com/periyandavar/gp_dbms/tree/HEAD)
 
-[Full Changelog](https://github.com/periyandavar/gp_dbms/compare/1.0.4...HEAD)
+[Full Changelog](https://github.com/periyandavar/gp_dbms/compare/1.0.5...HEAD)
+
+**Merged pull requests:**
+
+- feat: add support for model class [\#12](https://github.com/periyandavar/gp_dbms/pull/12) ([periyandavar](https://github.com/periyandavar))
+
+## [1.0.5](https://github.com/periyandavar/gp_dbms/tree/1.0.5) (2025-05-25)
+
+[Full Changelog](https://github.com/periyandavar/gp_dbms/compare/1.0.4...1.0.5)
 
 **Merged pull requests:**
 
