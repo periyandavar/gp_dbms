@@ -4,9 +4,9 @@ namespace Database\Driver;
 
 use Database\Database;
 use Database\Exception\DatabaseException;
-use Error;
 use mysqli;
 use Mysqli_sql_exception;
+use Throwable;
 
 class MysqliDriver extends Database
 {
@@ -67,20 +67,18 @@ class MysqliDriver extends Database
      */
     public function executeQuery(): bool
     {
-        $flag = false;
+        return $this->run($this->getStmt());
+    }
+
+    public function run($stmt)
+    {
         try {
-            $stmt = $this->getStmt();
             $flag = $stmt->execute();
             if ($flag) {
                 $result = $stmt->get_result();
-                $this->result = ($result == false) ? null : $this->result = $result;
+                $this->result = (! $result) ? null : $this->result = $result;
             }
-        } catch (Mysqli_sql_exception $e) {
-            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
-                'sql' => $this->query,
-                'bind values' => $this->bindValues
-            ]);
-        } catch (Error $e) {
+        } catch (Throwable $e) {
             throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
                 'sql' => $this->query,
                 'bind values' => $this->bindValues
@@ -90,7 +88,7 @@ class MysqliDriver extends Database
         return $flag;
     }
 
-    private function getStmt($query = null, $bindValues = null)
+    protected function getStmt($query = null, $bindValues = null)
     {
         $query = $query ?? $this->query;
         $bindValues = $bindValues ?? $this->bindValues;
@@ -137,27 +135,7 @@ class MysqliDriver extends Database
      */
     public function runQuery(string $sql, array $bindValues = []): bool
     {
-        $flag = false;
-        try {
-            $stmt = $this->getStmt($sql, $bindValues);
-            $flag = $stmt->execute();
-            if ($flag == true) {
-                $result = $stmt->get_result();
-                $this->result = ($result == false) ? null : $this->result = $result;
-            }
-        } catch (Mysqli_sql_exception $e) {
-            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
-                'sql' => $this->query,
-                'bind values' => $this->bindValues
-            ]);
-        } catch (Error $e) {
-            throw new DatabaseException($e->getMessage(), DatabaseException::DATABASE_QUERY_ERROR, $e, [
-                'sql' => $this->query,
-                'bind values' => $this->bindValues
-            ]);
-        }
-
-        return $flag;
+        return $this->run($this->getStmt($sql, $bindValues));
     }
 
     /**

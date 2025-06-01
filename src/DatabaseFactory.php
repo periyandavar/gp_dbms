@@ -25,15 +25,14 @@ class DatabaseFactory
             if (!class_exists($driverclass)) {
                 throw new DatabaseException("Driver class: {$driverclass} not found to create the db instance", DatabaseException::DRIVER_NOT_FOUND_ERROR, null, ['driver' => $driverclass]);
             }
-            $db = $driverclass::getInstance(
+
+            return $driverclass::getInstance(
                 $config['host'],
                 $config['user'],
                 $config['password'],
                 $config['database'],
                 $driver
             );
-
-            return $db;
         } catch (Exception $e) {
             if ($e instanceof DatabaseException) {
                 throw $e;

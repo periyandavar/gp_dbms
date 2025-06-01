@@ -8,7 +8,6 @@ class HasOne extends Relation
 {
     public function handle()
     {
-        $class = $this->relatedModel;
         $primarykey = $this->primaryKey;
         $this->query->where("{$this->foreignKey} = {$this->model->$primarykey}");
 

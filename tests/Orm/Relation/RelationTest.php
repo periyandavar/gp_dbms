@@ -1,5 +1,6 @@
 <?php
 
+use Database\DBQuery;
 use Database\Orm\Model;
 use Database\Orm\Relation\Relation;
 use Mockery as m;
@@ -73,5 +74,53 @@ class RelationTest extends TestCase
         $relation->reload();
         $data = $relation->resolve(true);
         $this->assertEquals(['related_data'], $data);
+    }
+
+    public function testCallDelegatesToQuery()
+    {
+        $mockQuery = $this->getMockBuilder(DBQuery::class)
+            ->onlyMethods(['select'])
+            ->getMock();
+        $mockQuery->expects($this->once())
+    ->method('select')
+    ->with('foo')
+    ->willReturn($mockQuery); // Return the mock itself
+
+        // $this->assertSame($mockQuery, $relation->__call('select', ['foo']));
+
+        $mockModel = $this->createMock(Model::class);
+
+        $relation = new DummyRelation($mockModel, 'id', 'RelatedModel', 'foreign_id', $mockQuery);
+
+        $this->assertEquals($mockQuery, $relation->__call('select', ['foo']));
+    }
+
+    public function testCallThrowsOnUnknownMethod()
+    {
+        $mockQuery = $this->createMock(DBQuery::class);
+        $mockModel = $this->createMock(Model::class);
+        $relation = new DummyRelation($mockModel, 'id', 'RelatedModel', 'foreign_id', $mockQuery);
+
+        $this->expectException(\BadMethodCallException::class);
+        $relation->__call('nonexistentMethod', []);
+    }
+
+    public function testWithAndGetWithModels()
+    {
+        $mockQuery = $this->createMock(DBQuery::class);
+        $mockModel = $this->createMock(Model::class);
+        $relation = new DummyRelation($mockModel, 'id', 'RelatedModel', 'foreign_id', $mockQuery);
+
+        $relation->with('foo');
+        $relation->with(['bar', 'baz']);
+
+        $this->assertEquals(['foo', 'bar', 'baz'], $relation->getWithModels());
+    }
+}
+
+class DummyRelation extends Relation
+{
+    public function handle()
+    {
     }
 }

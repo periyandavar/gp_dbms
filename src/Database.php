@@ -111,7 +111,7 @@ abstract class Database
      *
      * @return object|bool|null
      */
-    abstract public function fetch(); //object|bool|null;
+    abstract public function fetch();
 
     /**
      * Disabling cloning the object from outside the class
@@ -175,9 +175,8 @@ abstract class Database
         $query = trim($query);
         $this->query = $query;
         $this->bindValues = $bindValues;
-        $result = $this->runQuery($this->query, $this->bindValues);
 
-        return $result;
+        return $this->runQuery($this->query, $this->bindValues);
     }
 
     /**
