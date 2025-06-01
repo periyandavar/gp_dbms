@@ -530,7 +530,7 @@ class DBQuery
      */
     public function getQuery(): string
     {
-        $query = ($this->_sql == '')
+        return ($this->_sql == '')
             ? 'SELECT '
                 . $this->_columns
                 . ' FROM '
@@ -543,8 +543,6 @@ class DBQuery
                 . $this->_orderby
             : $this->_sql
                 . $this->_where;
-
-        return $query;
     }
 
     /**
