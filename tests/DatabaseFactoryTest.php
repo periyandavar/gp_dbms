@@ -107,4 +107,15 @@ class DatabaseFactoryTest extends TestCase
     {
         $this->assertNull(DatabaseFactory::get('nonexistent'));
     }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testSetStoresAndReturnsDatabaseInstance()
+    {
+        $mockDb = $this->createMock(\Database\Database::class);
+        DatabaseFactory::set('custom', $mockDb);
+        $this->assertSame($mockDb, DatabaseFactory::get('custom'));
+    }
 }

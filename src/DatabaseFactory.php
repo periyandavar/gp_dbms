@@ -72,4 +72,17 @@ class DatabaseFactory
 
         return null;
     }
+
+    /**
+     * Set a Database instance for a given name
+     *
+     * @param string             $name
+     * @param \Database\Database $db
+     *
+     * @return void
+     */
+    public static function set(string $name, Database $db)
+    {
+        self::$dbs[$name] = $db;
+    }
 }
