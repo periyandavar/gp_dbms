@@ -2,7 +2,15 @@
 
 ## [Unreleased](https://github.com/periyandavar/gp_dbms/tree/HEAD)
 
-[Full Changelog](https://github.com/periyandavar/gp_dbms/compare/1.0.7...HEAD)
+[Full Changelog](https://github.com/periyandavar/gp_dbms/compare/1.0.8...HEAD)
+
+**Merged pull requests:**
+
+- feat: add set db [\#15](https://github.com/periyandavar/gp_dbms/pull/15) ([periyandavar](https://github.com/periyandavar))
+
+## [1.0.8](https://github.com/periyandavar/gp_dbms/tree/1.0.8) (2025-06-01)
+
+[Full Changelog](https://github.com/periyandavar/gp_dbms/compare/1.0.7...1.0.8)
 
 **Merged pull requests:**
 
